@@ -9,6 +9,7 @@ Auralis is an innovative IoT-enabled smart street lighting system designed to si
 * [Key Features](#-key-features)
 * [System Architecture](#-system-architecture)
 * [Technology Stack](#-technology-stack)
+* [Directory Structure](#-directory-structure)
 * [Market Potential & Applications](#-market-potential--applications)
 * [Results & Performance](#-results--performance)
 * [Team](#-team)
@@ -38,21 +39,42 @@ The system prioritizes ambient light conditions to determine light activation. O
 
 ## 🛠️ Technology Stack
 
-**Microcontroller:** ESP32 Devkit V1
+**Microcontroller:** ESP32 Devkit V1  
 **Sensors:**
-
 * Light Dependent Resistor (LDR) for ambient light
 * Passive Infrared (PIR) Sensor for motion detection (field deployment)
 * Infrared (IR) Sensor for motion detection (prototype)
 * Voltage & Current Sensors for fault monitoring
 
 **Communication:**
-
 * Wi-Fi (802.11 b/g/n)
 * LoRaWAN
 
-**Lighting:** 400W LED Luminaires with PWM Dimming Control
+**Lighting:** 400W LED Luminaires with PWM Dimming Control  
 **Power:** Regulated 12V Power Supply with Buck Converters
+
+---
+
+## 📁 Directory Structure
+
+```
+Auralis/
+├── Arduino/                # Firmware source code for ESP32
+│   ├── main.ino
+│   ├── config.h
+│   └── ...
+├── docs/                   # Documentation and technical reports
+│   └── architecture.pdf
+├── hardware/               # Schematics, PCB layouts, BOM
+│   └── schematic.png
+├── cloud/                  # Cloud integration scripts/configs
+│   └── upload.py
+├── test/                   # Test scripts and simulation data
+│   └── test_cases.md
+├── LICENSE
+├── README.md
+└── .gitignore
+```
 
 ---
 
@@ -101,7 +123,7 @@ Testing on a simulated 1 km, 3-lane road segment showed:
 2. Open the project in your preferred IDE.
 3. Install necessary libraries.
 4. Upload the firmware to your ESP32 board.
-5. Configure your cloud platform credentials in the `config.h` file.
+5. Configure your cloud platform credentials in the `Arduino/config.h` file.
 
 ---
 
