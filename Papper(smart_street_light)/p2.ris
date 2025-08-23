@@ -1,0 +1,17 @@
+TY  - JOUR
+AU  - Kanthi, M.
+AU  - Dilli, Ravilla
+PY  - 2023
+DA  - 2023/07/01
+TI  - Smart streetlight system using mobile applications: secured fault detection and diagnosis with optimal powers
+JO  - Wireless Networks
+SP  - 2015
+EP  - 2028
+VL  - 29
+IS  - 5
+AB  - A street lighting system is a very essential part of the highways and streets of a smart city. Managing power consumption and maintenance of a street light system will be a challenging task in huge countries. The proposed work is mainly focused on the minimization of power consumption in the implementation of a smart street lighting system. Also, use a mobile application for setting up the brightness levels of the lamps in an encrypted form so that an unauthorized person will not be able to modify the settings. In the existing streetlight system, wireless sensors are installed to control and monitor the streetlamps. In the proposed system, using an nRF24L01 radio transceiver module, a secured communication link is established to operate the streetlights depending on the ambient weather conditions, movement of humans, vehicles and any other objects. A failsafe mechanism is implemented in the modules for conventional lamp operation in the case of module failures. Light-dependent resistor (LDR) is used to determine the ambient brightness levels to automatically turn on/off the streetlights based on weather conditions and lighting on roads. Using smartphones, we access and control the brightness information from the master node at which the nRF24L01 radio transceiver module is installed, and the same information is relayed to all the slave nodes. The results show that we could effectively monitor and control the brightness of streetlights in a secure way and there is a significant amount of power savings. The proposed system saves the average powers of 53.45%, 44.76%, 39.39%, and 32.25% respectively for 10%, 20%, 30%, and 50% idle mode brightness compared to the state-of-the-art techniques present in the literature.
+SN  - 1572-8196
+UR  - https://doi.org/10.1007/s11276-023-03278-9
+DO  - 10.1007/s11276-023-03278-9
+ID  - Kanthi2023
+ER  - 
