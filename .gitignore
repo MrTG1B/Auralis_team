@@ -1,0 +1,62 @@
+# ------------------------
+# OS-specific files
+# ------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ------------------------
+# Node / Vercel (if you use frontend too)
+# ------------------------
+node_modules/
+.vercel/
+.next/
+
+# ------------------------
+# Arduino / ESP32 builds
+# ------------------------
+*.elf
+*.bin
+*.hex
+build/
+.pio/
+dist/
+
+# ------------------------
+# Logs / Temp files
+# ------------------------
+*.log
+*.tmp
+
+# ------------------------
+# Secrets
+# ------------------------
+.env
+.env.local
+*.key
+*.pem
+
+# ------------------------
+# Large / Media files (do not push to GitHub)
+# ------------------------
+*.avi
+*.mp4
+*.mkv
+*.mov
+*.wav
+*.mp3
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+*.iso
+*.pptx
+*.ppt
+
+# ------------------------
+# IDE specific
+# ------------------------
+.vscode/
+.idea/
+*.swp
