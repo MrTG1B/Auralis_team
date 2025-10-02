@@ -1,0 +1,6 @@
+[ProjectGroup]
+Version=1.0
+[Project1]
+ProjectPath=PCBv1.PrjPcb
+[Project2]
+ProjectPath=..\..\..\PolySense\Circuit\Aultium_antenna\Aultium_antenna.PrjPcb

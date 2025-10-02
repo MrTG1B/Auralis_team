@@ -255,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const encodedArea = encodeURIComponent(area);
 
             // Construct the URL using the encoded values
-            const response = await fetch(`https://r6jncd1n-8080.inc1.devtunnels.ms/${encodedArea}/${encodedLight}/lpdetails`);
+            const response = await fetch(`${window.location.origin}/${encodedArea}/${encodedLight}/lpdetails`);
             
             // Check if the response is successful
             if (!response.ok) {
@@ -295,7 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const encodedArea = encodeURIComponent(area);
 
             // Construct the URL using the encoded values
-            const response = await fetch(`https://r6jncd1n-8080.inc1.devtunnels.ms/${encodedArea}/${encodedLight}/location_src`);
+            const response = await fetch(`${window.location.origin}/${encodedArea}/${encodedLight}/location_src`);
             
             // Check if the response is successful
             if (!response.ok) {
@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function createAreaListButtons() {
         try {
             // Fetch the data from the Flask server's /arealist endpoint
-            const response = await fetch('https://r6jncd1n-8080.inc1.devtunnels.ms/arealist');
+            const response = await fetch(`${window.location.origin}/arealist`);
             
             // Check if the response is successful
             if (!response.ok) {
@@ -349,7 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function createLightListButtons(areaName) {
         try {
             // Fetch the data from the Flask server's /lightlist endpoint
-            const response = await fetch('https://r6jncd1n-8080.inc1.devtunnels.ms/area/'+ areaName+'/lp');
+            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/lp`);
             
             // Check if the response is successful
             if (!response.ok) {
@@ -379,7 +379,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function createFaultyLightListButtons(areaName) {
         try{
-            const response = await fetch('https://r6jncd1n-8080.inc1.devtunnels.ms/area/'+ areaName+'/faulty_lp');
+            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/faulty_lp`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -420,7 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function getMap(areaName) {
         try{
-            const response = await fetch('https://r6jncd1n-8080.inc1.devtunnels.ms/area/'+ areaName+'/map');
+            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/map`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }

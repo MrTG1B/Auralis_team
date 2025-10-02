@@ -12,7 +12,7 @@ class Browser(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
         self.browser = QWebEngineView()
         self.browser.setUrl(QUrl(DASHBOARD_URL))
-        self.browser.setZoomFactor(1.0)  # Ensure normal zoom
+        self.browser.setZoomFactor(1.50)  # 125% zoom
         self.setCentralWidget(self.browser)
         self.showFullScreen()
 

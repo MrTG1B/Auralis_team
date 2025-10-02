@@ -11,7 +11,7 @@ form.addEventListener("submit", (e) => {
     }
     else {
         // Check if the username is 'Tirtha' and password is '12345678'
-        if (name.value === "Tirtha" && password.value === "12345678") {
+        if (name.value === "admin" && password.value === "admin") {
             // Redirect to the next page
             window.location.href = "/dashboard/dashboard.html";
         } else {
