@@ -302,13 +302,33 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Get the text data from the response
-            const data = await response.text();
-
-            // Set the src of the map iframe
-            const map = document.getElementById('map');
-            map.src = data;
-            document.getElementById('lpDetailsContainer').style.display = 'flex';
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await response.json();
+                if (data.lat != null && data.lon != null) {
+                    const lat = data.lat;
+                    const lon = data.lon;
+                    var map = L.map('map').setView([lat, lon], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                    L.marker([lat, lon]).addTo(map).openPopup();
+                    return;
+                }
+                if (data.location_src) {
+                    const mapEl = document.getElementById('map');
+                    mapEl.src = data.location_src;
+                    document.getElementById('lpDetailsContainer').style.display = 'flex';
+                    return;
+                }
+            } else {
+                // fallback text/iframe URL
+                const src = await response.text();
+                const mapEl = document.getElementById('map');
+                mapEl.src = src;
+                document.getElementById('lpDetailsContainer').style.display = 'flex';
+            }
+            
         } catch (error) {
             console.error('Error fetching src:', error);
             document.getElementById('lpDetailsContainer').style.display = 'none';

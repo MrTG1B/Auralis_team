@@ -16,6 +16,9 @@
     <meta property="og:type" content="website">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body id="main-window-body">
         <div id="left-panel">
@@ -39,8 +42,9 @@
 
         <div id="middle-panel">
             <div id="mapContainer" class="middle-panel-cards">
-                <iframe id="map" src="/assets/images/map_load.gif" frameborder="0" allowfullscreen></iframe>
-                <div id="lpDetailsContainer"  style="display: none;">
+                <!-- <iframe id="map" src="/assets/images/map_load.gif" frameborder="0" allowfullscreen></iframe> -->
+                <div id="map"></div>
+                <!-- <div id="lpDetailsContainer"  style="display: none;">
                     <div style="width: 50%; float: left;">
                         <p>Light Post: <span id="lpNumber">--</span></p>
                         <p>Area: <span id="areaName">--</span></p>
@@ -54,7 +58,7 @@
                         <p>Installation Date: <span id="installationDate">--</span></p>
                         <p>Last Service Date: <span id="lastServiceDate">--</span></p>
                     </div>
-                </div>
+                </div> -->
             </div>
             
             

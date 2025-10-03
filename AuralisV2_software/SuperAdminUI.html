@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auralis Super Admin</title>
+  <style>
+    /* General Body and Font Styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: #f3f4f6; /* formerly bg-gray-100 */
+      color: #1f2937; /* formerly text-gray-800 */
+    }
+
+    /* Main container for content */
+    .container {
+      max-width: 80rem; /* formerly max-w-7xl */
+      margin: 0 auto;
+      padding: 1.5rem; /* formerly p-6 */
+    }
+
+    h1 {
+      font-size: 1.5rem; /* formerly text-2xl */
+      font-weight: 700; /* formerly font-bold */
+      margin-bottom: 1.5rem; /* formerly mb-6 */
+    }
+
+    h2 {
+      font-size: 1.125rem; /* formerly text-lg */
+      font-weight: 600; /* formerly font-semibold */
+    }
+
+    /* Loader Styles */
+    #loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    #loader.hidden {
+      display: none;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 1.5rem; /* formerly w-6 */
+      height: 1.5rem; /* formerly h-6 */
+      border: 4px solid #3b82f6; /* formerly border-4 border-blue-500 */
+      border-top-color: transparent; /* formerly border-t-transparent */
+      border-radius: 50%; /* formerly rounded-full */
+      margin-right: 0.5rem; /* formerly mr-2 */
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #loader span:last-child {
+      font-size: 0.875rem; /* formerly text-sm */
+      color: #4b5563; /* formerly text-gray-600 */
+    }
+
+    /* Toast Notification Styles */
+    .toast {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+      z-index: 50;
+      display: none;
+    }
+    .toast-ok {
+        background-color: #059669; /* emerald-600 */
+    }
+    .toast-err {
+        background-color: #dc2626; /* red-600 */
+    }
+
+    /* Layout Grid */
+    .grid-layout {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 1024px) {
+      .grid-layout {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Card Styles */
+    .card {
+      background-color: white;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
+      border-radius: 0.75rem; /* formerly rounded-xl */
+      padding: 1rem; /* formerly p-4 */
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem; /* formerly mb-3 */
+      gap: 0.75rem;
+    }
+    
+    .card-header .add-area-controls {
+      display: flex;
+      gap: 0.5rem; /* formerly space-x-2 */
+    }
+
+    .card-header .add-light-controls {
+        display: grid;
+        gap: 0.5rem; /* formerly gap-2 */
+        width: 100%;
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    @media (min-width: 768px) {
+        .card-header .add-light-controls {
+            grid-template-columns: repeat(6, 1fr);
+        }
+    }
+
+    /* Table Styles */
+    .table-container {
+      overflow: auto;
+      max-height: 60vh; /* Added for better scrolling on large tables */
+    }
+
+    .data-table {
+      min-width: 100%;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem; /* formerly text-sm */
+    }
+
+    .data-table thead {
+      background-color: #f3f4f6; /* formerly bg-gray-100 */
+      position: sticky;
+      top: 0;
+    }
+
+    .data-table th {
+      padding: 0.5rem 0.75rem; /* formerly px-3 py-2 */
+      text-align: left; /* formerly text-left */
+      font-weight: 600;
+    }
+
+    .data-table tbody tr:nth-child(even) {
+        background-color: #f9fafb; /* formerly even:bg-gray-50 */
+    }
+    .data-table tbody tr:hover {
+        background-color: #f9fafb; /* formerly hover:bg-gray-50 */
+    }
+
+    .data-table td {
+      padding: 0.5rem 0.75rem; /* formerly px-3 py-2 */
+      white-space: nowrap;
+    }
+
+    /* Form Input and Button Styles (from original file) */
+    .input {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 6px 10px;
+      width: 100%;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .input:focus {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+      border-color: #2563eb;
+    }
+    .btn {
+      background: #2563eb;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      filter: brightness(0.95);
+    }
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-danger:hover {
+      filter: brightness(0.95);
+    }
+  </style>
+  <script>
+    function showToast(msg, type = 'ok') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      // Use CSS classes for styling
+      el.className = 'toast'; // Reset classes
+      el.classList.add(type === 'err' ? 'toast-err' : 'toast-ok');
+      el.style.display = 'block';
+      setTimeout(() => {
+        el.style.display = 'none';
+      }, 2500);
+    }
+
+    function setLoading(on) {
+      const l = document.getElementById('loader');
+      // Toggle a single class to show/hide
+      if (on) {
+        l.classList.remove('hidden');
+      } else {
+        l.classList.add('hidden');
+      }
+    }
+
+    async function fetchJSON(url, opts = {}) {
+      const r = await fetch(url, {
+        cache: 'no-store',
+        ...opts
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(t || (`HTTP ${r.status}`));
+      }
+      const ct = r.headers.get('content-type') || '';
+      return ct.includes('application/json') ? r.json() : r.text();
+    }
+
+    async function load() {
+      try {
+        setLoading(true);
+        const [areas, lights] = await Promise.all([
+          fetchJSON('/admin/areas'),
+          fetchJSON('/admin/lights')
+        ]);
+        renderAreas(areas);
+        renderLights(lights);
+      } catch (e) {
+        showToast(`Load failed: ${e.message || e}`, 'err');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderAreas(rows) {
+      const tbody = document.getElementById('areas-tbody');
+      tbody.innerHTML = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr'); // Removed Tailwind classes
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td><input class="input" value="${r.name||''}" data-field="name" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.src||''}" data-field="src" data-id="${r.id}"></td>
+          <td><button class="btn" onclick="saveArea(${r.id})">Save</button> <button class="btn-danger" onclick="delArea(${r.id})">Delete</button></td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderLights(rows) {
+      const tbody = document.getElementById('lights-tbody');
+      tbody.innerHTML = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr'); // Removed Tailwind classes
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td><input class="input" value="${r.name||''}" data-field="name" data-id="${r.id}"></td>
+          <td>${r.area}</td>
+          <td><input class="input" value="${r.lat ?? ''}" data-field="lat" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.lon ?? ''}" data-field="lon" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.ip||''}" data-field="ip" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.voltage||''}" data-field="voltage" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.current||''}" data-field="current" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.power||''}" data-field="power" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.energy||''}" data-field="energy" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.location_src||''}" data-field="location_src" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.installation_date||''}" data-field="installation_date" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.last_service_date||''}" data-field="last_service_date" data-id="${r.id}"></td>
+          <td><input class="input" value="${r.fault_status||''}" data-field="fault_status" data-id="${r.id}"></td>
+          <td><button class="btn" onclick="saveLight(${r.id})">Save</button> <button class="btn-danger" onclick="delLight(${r.id})">Delete</button></td>`;
+        tbody.appendChild(tr);
+      }
+    }
+    
+    async function saveArea(id) {
+      try {
+        const inputs = document.querySelectorAll(`#areas-tbody input[data-id='${id}']`);
+        const payload = {};
+        inputs.forEach(i => {
+          if (i.dataset.field) payload[i.dataset.field] = i.value;
+        });
+        await fetchJSON('/admin/area/' + id, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        showToast('Area updated');
+        await load();
+      } catch (e) {
+        showToast(`Update failed: ${e.message || e}`, 'err');
+      }
+    }
+    async function delArea(id) {
+      try {
+        await fetchJSON('/admin/area/' + id, {
+          method: 'DELETE'
+        });
+        showToast('Area deleted');
+        await load();
+      } catch (e) {
+        showToast(`Delete failed: ${e.message || e}`, 'err');
+      }
+    }
+    async function saveLight(id) {
+      try {
+        const inputs = document.querySelectorAll(`#lights-tbody input[data-id='${id}']`);
+        const payload = {};
+        inputs.forEach(i => {
+          if (i.dataset.field) payload[i.dataset.field] = i.value;
+        });
+        if (payload.lat !== undefined && payload.lat !== '') payload.lat = parseFloat(payload.lat);
+        if (payload.lon !== undefined && payload.lon !== '') payload.lon = parseFloat(payload.lon);
+        await fetchJSON('/admin/light/' + id, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        showToast('Light updated');
+        await load();
+      } catch (e) {
+        showToast(`Update failed: ${e.message || e}`, 'err');
+      }
+    }
+    async function delLight(id) {
+      try {
+        await fetchJSON('/admin/light/' + id, {
+          method: 'DELETE'
+        });
+        showToast('Light deleted');
+        await load();
+      } catch (e) {
+        showToast(`Delete failed: ${e.message || e}`, 'err');
+      }
+    }
+    async function addArea() {
+      try {
+        const name = document.getElementById('newAreaName').value.trim();
+        const src = document.getElementById('newAreaSrc').value.trim();
+        if (!name) return;
+        await fetchJSON('/admin/area', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name,
+            src
+          })
+        });
+        document.getElementById('newAreaName').value = '';
+        document.getElementById('newAreaSrc').value = '';
+        showToast('Area added');
+        await load();
+      } catch (e) {
+        showToast(`Add failed: ${e.message || e}`, 'err');
+      }
+    }
+    async function addLight() {
+      try {
+        const area = document.getElementById('newLightArea').value.trim();
+        const name = document.getElementById('newLightName').value.trim();
+        if (!area || !name) return;
+        const payload = {
+          area,
+          name,
+          lat: document.getElementById('new_lat').value ? parseFloat(document.getElementById('new_lat').value) : null,
+          lon: document.getElementById('new_lon').value ? parseFloat(document.getElementById('new_lon').value) : null,
+          location_src: document.getElementById('new_location_src').value,
+          ip: document.getElementById('new_ip').value,
+          voltage: document.getElementById('new_voltage').value,
+          current: document.getElementById('new_current').value,
+          power: document.getElementById('new_power').value,
+          energy: document.getElementById('new_energy').value,
+          installation_date: document.getElementById('new_installation_date').value,
+          last_service_date: document.getElementById('new_last_service_date').value,
+          fault_status: document.getElementById('new_fault_status').value,
+        };
+        await fetchJSON('/admin/light', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        ['newLightArea', 'newLightName', 'new_lat', 'new_lon', 'new_location_src', 'new_ip', 'new_voltage', 'new_current', 'new_power', 'new_energy', 'new_installation_date', 'new_last_service_date', 'new_fault_status'].forEach(id => document.getElementById(id).value = '');
+        showToast('Light added');
+        await load();
+      } catch (e) {
+        showToast(`Add failed: ${e.message || e}`, 'err');
+      }
+    }
+    window.onload = load;
+  </script>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+  <div class="container">
+    <h1>Auralis Super Admin</h1>
+    <div id="loader" class="hidden">
+        <span class="spinner"></span>
+        <span>Loading...</span>
+    </div>
+    <div class="grid-layout">
+      <div class="card">
+        <div class="card-header">
+          <h2>Areas</h2>
+          <div class="add-area-controls">
+            <input id="newAreaName" class="input" placeholder="New area name" />
+            <input id="newAreaSrc" class="input" placeholder="Map src" />
+            <button class="btn" onclick="addArea()">Add</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Map Src</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="areas-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Lights</h2>
+          <div class="add-light-controls">
+            <input id="newLightArea" class="input" placeholder="Area name" />
+            <input id="newLightName" class="input" placeholder="Light name" />
+            <input id="new_lat" class="input" placeholder="Lat" />
+            <input id="new_lon" class="input" placeholder="Lon" />
+            <input id="new_ip" class="input" placeholder="IP" />
+            <input id="new_voltage" class="input" placeholder="Voltage" />
+            <input id="new_current" class="input" placeholder="Current" />
+            <input id="new_power" class="input" placeholder="Power" />
+            <input id="new_energy" class="input" placeholder="Energy" />
+            <input id="new_location_src" class="input" placeholder="Location src" />
+            <input id="new_installation_date" class="input" placeholder="Installation date" />
+            <input id="new_last_service_date" class="input" placeholder="Last service date" />
+            <input id="new_fault_status" class="input" placeholder="Fault status" />
+            <button class="btn" onclick="addLight()">Add</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Area</th>
+                <th>Lat</th>
+                <th>Lon</th>
+                <th>IP</th>
+                <th>V</th>
+                <th>I</th>
+                <th>P</th>
+                <th>E</th>
+                <th>Location Src</th>
+                <th>Install</th>
+                <th>Last Serv.</th>
+                <th>Fault</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="lights-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

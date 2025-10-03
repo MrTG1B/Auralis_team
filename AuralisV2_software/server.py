@@ -4,6 +4,13 @@ import os
 import json
 import datetime
 
+# Load .env if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 try:
     import mysql.connector
     from mysql.connector import Error as MySQLError
@@ -16,7 +23,7 @@ app = Flask(__name__)
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
@@ -34,11 +41,15 @@ def load_database():
         return None
 
 # -------------------- MySQL helpers --------------------
-DB_HOST = os.environ.get("AURALIS_DB_HOST", "localhost")
-DB_PORT = int(os.environ.get("AURALIS_DB_PORT", "3306"))
-DB_USER = os.environ.get("AURALIS_DB_USER", "root")
-DB_PASS = os.environ.get("AURALIS_DB_PASS", "")
-DB_NAME = os.environ.get("AURALIS_DB_NAME", "auralis")
+def get_env(key: str, default: str):
+    # Prefer AURALIS_* then DB_* then default
+    return os.environ.get(key) or os.environ.get(key.replace("AURALIS_", "DB_")) or default
+
+DB_HOST = get_env("AURALIS_DB_HOST", "localhost")
+DB_PORT = int(get_env("AURALIS_DB_PORT", "3306"))
+DB_USER = get_env("AURALIS_DB_USER", "root")
+DB_PASS = get_env("AURALIS_DB_PASS", "")
+DB_NAME = get_env("AURALIS_DB_NAME", "auralis")
 
 def get_db_connection():
     if mysql is None:
@@ -84,6 +95,8 @@ def init_db_schema():
                 name VARCHAR(255) NOT NULL,
                 area_id INT NOT NULL,
                 location_src TEXT NULL,
+                lat DOUBLE NULL,
+                lon DOUBLE NULL,
                 ip VARCHAR(255) NULL,
                 voltage VARCHAR(64) NULL,
                 current VARCHAR(64) NULL,
@@ -101,6 +114,12 @@ def init_db_schema():
         conn.close()
     except MySQLError as e:
         print(f"[MySQL] init_db_schema error: {e}")
+        print(
+            "If the database does not exist or you lack privileges, please create it and grant access:\n"
+            f"CREATE DATABASE IF NOT EXISTS {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n"
+            f"-- create user if needed and grant privileges to user '{DB_USER}'\n"
+            f"GRANT ALL PRIVILEGES ON {DB_NAME}.* TO '{DB_USER}'@'%'; FLUSH PRIVILEGES;"
+        )
 
 def migrate_json_if_empty():
     try:
@@ -124,13 +143,16 @@ def migrate_json_if_empty():
             area_id = row[0]
             lp_map = (area_payload.get("lp") or {})
             for lp_name, lp in lp_map.items():
+                lat = None
+                lon = None
+                # try to parse from location_src if it's a google maps iframe with center coords; fallback None
                 cur.execute(
                     """
                     INSERT INTO light_posts
-                    (name, area_id, location_src, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (name, area_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
-                        location_src=VALUES(location_src), ip=VALUES(ip), voltage=VALUES(voltage),
+                        location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage),
                         current=VALUES(current), power=VALUES(power), energy=VALUES(energy),
                         installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date),
                         fault_status=VALUES(fault_status)
@@ -139,6 +161,8 @@ def migrate_json_if_empty():
                         lp.get("name"),
                         area_id,
                         lp.get("location_src"),
+                        lat,
+                        lon,
                         lp.get("ip"),
                         lp.get("voltage"),
                         lp.get("current"),
@@ -154,6 +178,7 @@ def migrate_json_if_empty():
         print("[MySQL] Migration from database.json completed (if needed)")
     except MySQLError as e:
         print(f"[MySQL] migrate_json_if_empty error: {e}")
+        print("Migration skipped. Ensure DB exists and credentials from .env are correct.")
 
 
 @app.route("/")
@@ -261,24 +286,29 @@ def get_lp_details(area, light):
 def get_lp_location_src(area, light):
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(dictionary=True)
         cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
             return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        area_id = row[0]
-        cur.execute("SELECT location_src FROM light_posts WHERE area_id=%s AND name=%s", (area_id, light))
+        area_id = row["id"]
+        cur.execute("SELECT lat, lon, location_src FROM light_posts WHERE area_id=%s AND name=%s", (area_id, light))
         row = cur.fetchone()
         cur.close()
         conn.close()
         if not row:
             return ("Light not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        src = row[0]
-        if not src:
-            return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
-        return (src, 200, {"Content-Type": "text/plain; charset=utf-8"})
+        lat = row.get("lat")
+        lon = row.get("lon")
+        if lat is not None and lon is not None:
+            return jsonify({"lat": lat, "lon": lon})
+        # fallback: try to derive from location_src if present
+        src = row.get("location_src")
+        if src:
+            return jsonify({"lat": None, "lon": None, "location_src": src})
+        return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
         if not db or area not in db:
@@ -286,10 +316,7 @@ def get_lp_location_src(area, light):
         lp = (db[area].get("lp") or {}).get(light)
         if not lp:
             return ("Light not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        src = lp.get("location_src")
-        if not src:
-            return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
-        return (src, 200, {"Content-Type": "text/plain; charset=utf-8"})
+        return jsonify({"lat": None, "lon": None, "location_src": lp.get("location_src")})
 
 @app.route("/area/<path:area>/faulty_lp")
 def get_faulty_lps(area):
@@ -356,10 +383,10 @@ def create_or_update_light():
         cur.execute(
             """
             INSERT INTO light_posts
-            (name, area_id, location_src, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (name, area_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
-                location_src=VALUES(location_src), ip=VALUES(ip), voltage=VALUES(voltage),
+                location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage),
                 current=VALUES(current), power=VALUES(power), energy=VALUES(energy),
                 installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date),
                 fault_status=VALUES(fault_status)
@@ -368,6 +395,8 @@ def create_or_update_light():
                 name,
                 area_id,
                 payload.get("location_src"),
+                payload.get("lat"),
+                payload.get("lon"),
                 payload.get("ip"),
                 payload.get("voltage"),
                 payload.get("current"),
@@ -383,6 +412,106 @@ def create_or_update_light():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/areas", methods=["GET"]) 
+def list_areas():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id, name, src FROM areas ORDER BY name ASC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/lights", methods=["GET"]) 
+def list_lights():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT lp.id, lp.name, a.name AS area, lp.lat, lp.lon, lp.location_src, lp.ip, lp.voltage, lp.current, lp.power, lp.energy, lp.installation_date, lp.last_service_date, lp.fault_status
+            FROM light_posts lp
+            JOIN areas a ON a.id = lp.area_id
+            ORDER BY a.name, lp.name
+            """
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/area/<int:area_id>", methods=["DELETE"]) 
+def delete_area(area_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM areas WHERE id=%s", (area_id,))
+        cur.close()
+        conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/light/<int:light_id>", methods=["DELETE"]) 
+def delete_light(light_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM light_posts WHERE id=%s", (light_id,))
+        cur.close()
+        conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/area/<int:area_id>", methods=["PATCH"]) 
+def patch_area(area_id):
+    payload = request.get_json(silent=True) or {}
+    updates = []
+    vals = []
+    for key in ["name", "src"]:
+        if key in payload:
+            updates.append(f"{key}=%s"); vals.append(payload[key])
+    if not updates:
+        return jsonify({"error": "No fields to update"}), 400
+    try:
+        conn = get_db_connection(); cur = conn.cursor()
+        vals.append(area_id)
+        cur.execute("UPDATE areas SET " + ", ".join(updates) + " WHERE id=%s", tuple(vals))
+        cur.close(); conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/admin/light/<int:light_id>", methods=["PATCH"]) 
+def patch_light(light_id):
+    payload = request.get_json(silent=True) or {}
+    allowed = ["name","location_src","lat","lon","ip","voltage","current","power","energy","installation_date","last_service_date","fault_status"]
+    updates = []
+    vals = []
+    for key in allowed:
+        if key in payload:
+            updates.append(f"{key}=%s"); vals.append(payload[key])
+    if not updates:
+        return jsonify({"error": "No fields to update"}), 400
+    try:
+        conn = get_db_connection(); cur = conn.cursor()
+        vals.append(light_id)
+        cur.execute("UPDATE light_posts SET " + ", ".join(updates) + " WHERE id=%s", tuple(vals))
+        cur.close(); conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/superadmin/ui")
+def admin_ui():
+    return send_file("SuperAdminUI.html")
 
 @app.route("/dashboard")
 def dashboard():
@@ -417,6 +546,8 @@ def run_server():
         migrate_json_if_empty()
     except Exception as e:
         print(f"[Startup] DB init/migration skipped: {e}")
+        print("Set DB credentials in a .env file, e.g.:\n"
+              "AURALIS_DB_HOST=localhost\nAURALIS_DB_PORT=3306\nAURALIS_DB_USER=auralis_user\nAURALIS_DB_PASS=StrongPassword123!\nAURALIS_DB_NAME=auralis")
     app.run(host="0.0.0.0", port=8080, debug=True, use_reloader=False)
 
 def stop_server():
