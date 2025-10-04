@@ -3,6 +3,7 @@ import requests
 import os
 import json
 import datetime
+import re
 
 # Load .env if present
 try:
@@ -63,6 +64,71 @@ def get_db_connection():
         autocommit=True,
     )
 
+def run_db_migrations():
+    """
+    Checks for old table 'areas' and migrates it to 'street_names'.
+    This is designed to be run once and is idempotent.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Check if 'areas' table exists
+        cur.execute("SHOW TABLES LIKE 'areas'")
+        if cur.fetchone():
+            print("[MySQL] Found old 'areas' table. Starting migration to 'street_names' schema.")
+            
+            # Step 1: Rename 'areas' to 'street_names'.
+            try:
+                cur.execute("RENAME TABLE areas TO street_names")
+                print("[MySQL] -> Renamed table 'areas' to 'street_names'.")
+            except MySQLError as e:
+                if e.errno == 1050: # Table 'street_names' already exists
+                     print("[MySQL] -> Table 'street_names' already exists. Manual data merge may be required. Proceeding with column migration.")
+                else:
+                    print(f"[MySQL] Could not rename 'areas' table: {e}")
+                    raise e
+
+            # Step 2: Check if 'light_posts' table has the old 'area_id' column
+            cur.execute("SHOW COLUMNS FROM light_posts LIKE 'area_id'")
+            if cur.fetchone():
+                print("[MySQL] Found old 'area_id' column in 'light_posts'. Migrating column and foreign key.")
+
+                # Step 2a: Drop the old foreign key constraint if it exists.
+                # The original constraint was named 'fk_light_area'.
+                try:
+                    cur.execute("ALTER TABLE light_posts DROP FOREIGN KEY fk_light_area")
+                    print("[MySQL] -> Dropped old foreign key 'fk_light_area'.")
+                except MySQLError as e:
+                    if e.errno == 1091: # Can't DROP '...'; check that key exists
+                        print("[MySQL] -> Foreign key 'fk_light_area' not found, skipping drop.")
+                    else:
+                        print(f"[MySQL] Error dropping foreign key, may need manual intervention: {e}")
+
+                # Step 2b: Rename the column
+                cur.execute("ALTER TABLE light_posts CHANGE COLUMN area_id street_name_id INT NOT NULL")
+                print("[MySQL] -> Renamed column 'area_id' to 'street_name_id'.")
+                
+                # Step 2c: Add the new foreign key constraint
+                try:
+                    cur.execute("ALTER TABLE light_posts ADD CONSTRAINT fk_light_street FOREIGN KEY (street_name_id) REFERENCES street_names(id) ON DELETE CASCADE")
+                    print("[MySQL] -> Added new foreign key 'fk_light_street'.")
+                except MySQLError as e:
+                    if e.errno == 1826: # Duplicate foreign key constraint name
+                        print("[MySQL] -> Foreign key 'fk_light_street' already exists, skipping add.")
+                    else:
+                        print(f"[MySQL] Error adding new foreign key. Check for orphaned light_posts: {e}")
+            
+            print("[MySQL] Schema migration check completed.")
+        
+        cur.close()
+        conn.close()
+    except MySQLError as e:
+        print(f"[MySQL] Migration failed with a database error: {e}")
+    except Exception as e:
+        print(f"[Migration] An unexpected error occurred: {e}")
+
+
 def init_db_schema():
     try:
         conn = mysql.connector.connect(
@@ -81,7 +147,7 @@ def init_db_schema():
         cur = conn.cursor()
         cur.execute(
             """
-            CREATE TABLE IF NOT EXISTS areas (
+            CREATE TABLE IF NOT EXISTS street_names (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
                 src TEXT NULL
@@ -93,7 +159,7 @@ def init_db_schema():
             CREATE TABLE IF NOT EXISTS light_posts (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
-                area_id INT NOT NULL,
+                street_name_id INT NOT NULL,
                 location_src TEXT NULL,
                 lat DOUBLE NULL,
                 lon DOUBLE NULL,
@@ -105,8 +171,9 @@ def init_db_schema():
                 installation_date VARCHAR(64) NULL,
                 last_service_date VARCHAR(64) NULL,
                 fault_status VARCHAR(64) NULL,
-                CONSTRAINT uq_light UNIQUE (name, area_id),
-                CONSTRAINT fk_light_area FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE CASCADE
+                fault_type VARCHAR(64) NULL,
+                CONSTRAINT uq_light UNIQUE (name, street_name_id),
+                CONSTRAINT fk_light_street FOREIGN KEY (street_name_id) REFERENCES street_names(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """
         )
@@ -125,23 +192,23 @@ def migrate_json_if_empty():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM areas")
-        (area_count,) = cur.fetchone()
-        if area_count and area_count > 0:
+        cur.execute("SELECT COUNT(*) FROM street_names")
+        (street_count,) = cur.fetchone()
+        if street_count and street_count > 0:
             cur.close()
             conn.close()
             return
 
         data = load_database() or {}
-        for area_name, area_payload in data.items():
-            src = area_payload.get("src")
-            cur.execute("INSERT IGNORE INTO areas (name, src) VALUES (%s, %s)", (area_name, src))
-            cur.execute("SELECT id, src FROM areas WHERE name=%s", (area_name,))
+        for street_name, street_payload in data.items():
+            src = street_payload.get("src")
+            cur.execute("INSERT IGNORE INTO street_names (name, src) VALUES (%s, %s)", (street_name, src))
+            cur.execute("SELECT id, src FROM street_names WHERE name=%s", (street_name,))
             row = cur.fetchone()
             if not row:
                 continue
-            area_id = row[0]
-            lp_map = (area_payload.get("lp") or {})
+            street_name_id = row[0]
+            lp_map = (street_payload.get("lp") or {})
             for lp_name, lp in lp_map.items():
                 lat = None
                 lon = None
@@ -149,17 +216,17 @@ def migrate_json_if_empty():
                 cur.execute(
                     """
                     INSERT INTO light_posts
-                    (name, area_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (name, street_name_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status, fault_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                         location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage),
                         current=VALUES(current), power=VALUES(power), energy=VALUES(energy),
                         installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date),
-                        fault_status=VALUES(fault_status)
+                        fault_status=VALUES(fault_status), fault_type=VALUES(fault_type)
                     """,
                     (
                         lp.get("name"),
-                        area_id,
+                        street_name_id,
                         lp.get("location_src"),
                         lat,
                         lon,
@@ -171,6 +238,7 @@ def migrate_json_if_empty():
                         lp.get("installation_date"),
                         lp.get("last_service_date"),
                         lp.get("fault_status"),
+                        lp.get("fault_type"),
                     ),
                 )
         cur.close()
@@ -180,92 +248,190 @@ def migrate_json_if_empty():
         print(f"[MySQL] migrate_json_if_empty error: {e}")
         print("Migration skipped. Ensure DB exists and credentials from .env are correct.")
 
+def dms_to_decimal(dms: str) -> float:
+    """
+    Convert DMS string like '22°34'42.4"N' to decimal degrees float.
+    """
+    match = re.match(r"(\d+)°(\d+)'([\d\.]+)\"?([NSEW])", dms.strip())
+    if not match:
+        raise ValueError(f"Invalid DMS format: {dms}")
+    
+    deg, minutes, seconds, direction = match.groups()
+    deg = float(deg)
+    minutes = float(minutes)
+    seconds = float(seconds)
+    decimal = deg + minutes/60 + seconds/3600
+    
+    if direction in ['S','W']:
+        decimal = -decimal
+    return decimal
+
+def decimal_to_dms(value: float, latlon: str) -> str:
+    """
+    Convert decimal degrees to DMS with N/S/E/W.
+    latlon = 'lat' or 'lon' to decide suffix.
+    """
+    direction = ""
+    if latlon == "lat":
+        direction = "N" if value >= 0 else "S"
+    else:
+        direction = "E" if value >= 0 else "W"
+    
+    value = abs(value)
+    d = int(value)
+    m_float = (value - d) * 60
+    m = int(m_float)
+    s = (m_float - m) * 60
+    return f"{d}°{m}'{s:.1f}\"{direction}"
 
 @app.route("/")
 def home():
     return "<h1>Hello from Flask server hi hello!</h1>"
 
-@app.route("/arealist")
-def proxy_arealist():
+@app.route("/streetnames")
+def proxy_street_names_list():
     # Prefer MySQL if available
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT name FROM areas ORDER BY name ASC")
-        areas = [row[0] for row in cur.fetchall()]
+        cur.execute("SELECT name FROM street_names ORDER BY name ASC")
+        streets = [row[0] for row in cur.fetchall()]
         cur.close()
         conn.close()
-        return ("\n".join(areas), 200, {"Content-Type": "text/plain; charset=utf-8"})
+        return ("\n".join(streets), 200, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
         if not db:
             return ("database.json not found or invalid", 500, {"Content-Type": "text/plain; charset=utf-8"})
-        areas = list(db.keys())
-        return ("\n".join(areas), 200, {"Content-Type": "text/plain; charset=utf-8"})
+        streets = list(db.keys())
+        return ("\n".join(streets), 200, {"Content-Type": "text/plain; charset=utf-8"})
 
-@app.route("/area/<path:area>/lp")
-def get_area_lps(area):
+@app.route("/street/<path:street>/lp")
+def get_street_lps(street):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        area_id = row[0]
-        cur.execute("SELECT name FROM light_posts WHERE area_id=%s ORDER BY name ASC", (area_id,))
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        street_name_id = row[0]
+        cur.execute("SELECT name FROM light_posts WHERE street_name_id=%s ORDER BY name ASC", (street_name_id,))
         names = [r[0] for r in cur.fetchall()]
         cur.close()
         conn.close()
         return ("\n".join(names), 200, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
-        if not db or area not in db:
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        lps = list((db[area].get("lp") or {}).keys())
+        if not db or street not in db:
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        lps = list((db[street].get("lp") or {}).keys())
         return ("\n".join(lps), 200, {"Content-Type": "text/plain; charset=utf-8"})
 
-@app.route("/area/<path:area>/map")
-def get_area_map(area):
+# UPDATED ENDPOINT FOR THE MAP FEATURE
+@app.route("/street/<path:street>/lp_locations")
+def get_lp_locations(street):
+    """
+    Gets all light posts for a street with their name, location, status, and other details.
+    This is used by the frontend to draw the interactive map with rich popups.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        # First, get the street_name_id for the given street name
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street,))
+        street_row = cur.fetchone()
+        if not street_row:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Street not found"}), 404
+        
+        street_name_id = street_row["id"]
+
+        # Now, fetch all light posts and their details for that street
+        cur.execute(
+            """
+            SELECT 
+                name, lat, lon, fault_status, voltage, current, power, energy, 
+                installation_date, last_service_date 
+            FROM light_posts 
+            WHERE street_name_id=%s
+            """,
+            (street_name_id,)
+        )
+        lights = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not lights:
+            return jsonify([]), 200 # Return empty list if no lights
+
+        # Format the data for the frontend, renaming 'fault_status' to 'status'
+        formatted_lights = []
+        for light in lights:
+            formatted_lights.append({
+                "name": light.get("name"),
+                "lat": light.get("lat"),
+                "lon": light.get("lon"),
+                "status": "faulty" if light.get("fault_status") == "Faulty" else "ok",
+                "voltage": light.get("voltage"),
+                "current": light.get("current"),
+                "power": light.get("power"),
+                "energy": light.get("energy"),
+                "installation_date": light.get("installation_date"),
+                "last_service_date": light.get("last_service_date")
+            })
+        
+        return jsonify(formatted_lights)
+
+    except MySQLError as e:
+        print(f"[MySQL] Error in /lp_locations: {e}")
+        return jsonify({"error": "Database error"}), 500
+    except Exception as e:
+        print(f"[App] Error in /lp_locations: {e}")
+        return jsonify({"error": "An unexpected server error occurred"}), 500
+
+@app.route("/street/<path:street>/map")
+def get_street_map(street):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT src FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT src FROM street_names WHERE name=%s", (street,))
         row = cur.fetchone()
         cur.close()
         conn.close()
         if not row:
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
         src = row[0]
         if not src:
             return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
         return (src, 200, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
-        if not db or area not in db:
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        src = db[area].get("src")
+        if not db or street not in db:
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        src = db[street].get("src")
         if not src:
             return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
         return (src, 200, {"Content-Type": "text/plain; charset=utf-8"})
 
-@app.route("/<path:area>/<path:light>/lpdetails")
-def get_lp_details(area, light):
+@app.route("/<path:street>/<path:light>/lpdetails")
+def get_lp_details(street, light):
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
-            return jsonify({"error": "Area not found"}), 404
-        area_id = row["id"]
+            return jsonify({"error": "Street not found"}), 404
+        street_name_id = row["id"]
         cur.execute(
-            "SELECT name, location_src, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status FROM light_posts WHERE area_id=%s AND name=%s",
-            (area_id, light),
+            "SELECT name, location_src, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status, fault_type FROM light_posts WHERE street_name_id=%s AND name=%s",
+            (street_name_id, light),
         )
         lp = cur.fetchone()
         cur.close()
@@ -275,26 +441,26 @@ def get_lp_details(area, light):
         return jsonify(lp)
     except Exception as _:
         db = load_database()
-        if not db or area not in db:
-            return jsonify({"error": "Area not found"}), 404
-        lp = (db[area].get("lp") or {}).get(light)
+        if not db or street not in db:
+            return jsonify({"error": "Street not found"}), 404
+        lp = (db[street].get("lp") or {}).get(light)
         if not lp:
             return jsonify({"error": "Light not found"}), 404
         return jsonify(lp)
 
-@app.route("/<path:area>/<path:light>/location_src")
-def get_lp_location_src(area, light):
+@app.route("/<path:street>/<path:light>/location_src")
+def get_lp_location_src(street, light):
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        area_id = row["id"]
-        cur.execute("SELECT lat, lon, location_src FROM light_posts WHERE area_id=%s AND name=%s", (area_id, light))
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        street_name_id = row["id"]
+        cur.execute("SELECT lat, lon, location_src FROM light_posts WHERE street_name_id=%s AND name=%s", (street_name_id, light))
         row = cur.fetchone()
         cur.close()
         conn.close()
@@ -311,26 +477,26 @@ def get_lp_location_src(area, light):
         return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
-        if not db or area not in db:
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        lp = (db[area].get("lp") or {}).get(light)
+        if not db or street not in db:
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        lp = (db[street].get("lp") or {}).get(light)
         if not lp:
             return ("Light not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
         return jsonify({"lat": None, "lon": None, "location_src": lp.get("location_src")})
 
-@app.route("/area/<path:area>/faulty_lp")
-def get_faulty_lps(area):
+@app.route("/street/<path:street>/faulty_lp")
+def get_faulty_lps(street):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        area_id = row[0]
-        cur.execute("SELECT name FROM light_posts WHERE area_id=%s AND fault_status='Faulty' ORDER BY name ASC", (area_id,))
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        street_name_id = row[0]
+        cur.execute("SELECT name FROM light_posts WHERE street_name_id=%s AND fault_status='Faulty' ORDER BY name ASC", (street_name_id,))
         names = [r[0] for r in cur.fetchall()]
         cur.close()
         conn.close()
@@ -339,17 +505,17 @@ def get_faulty_lps(area):
         return ("\n".join(names), 200, {"Content-Type": "text/plain; charset=utf-8"})
     except Exception as _:
         db = load_database()
-        if not db or area not in db:
-            return ("Area not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
-        faulty = db[area].get("faulty_lp") or {}
+        if not db or street not in db:
+            return ("Street not found", 404, {"Content-Type": "text/plain; charset=utf-8"})
+        faulty = db[street].get("faulty_lp") or {}
         if not faulty:
             return ("", 204, {"Content-Type": "text/plain; charset=utf-8"})
         names = list(faulty.keys())
         return ("\n".join(names), 200, {"Content-Type": "text/plain; charset=utf-8"})
 
 # -------------------- Data update endpoints (store into MySQL) --------------------
-@app.route("/admin/area", methods=["POST"])
-def create_or_update_area():
+@app.route("/admin/street", methods=["POST"])
+def create_or_update_street():
     payload = request.get_json(silent=True) or {}
     name = payload.get("name")
     src = payload.get("src")
@@ -358,7 +524,7 @@ def create_or_update_area():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("INSERT INTO areas (name, src) VALUES (%s, %s) ON DUPLICATE KEY UPDATE src=VALUES(src)", (name, src))
+        cur.execute("INSERT INTO street_names (name, src) VALUES (%s, %s) ON DUPLICATE KEY UPDATE src=VALUES(src)", (name, src))
         cur.close()
         conn.close()
         return jsonify({"status": "ok"})
@@ -368,35 +534,58 @@ def create_or_update_area():
 @app.route("/admin/light", methods=["POST"])
 def create_or_update_light():
     payload = request.get_json(silent=True) or {}
-    area = payload.get("area")
+    street_name = payload.get("street_name")
     name = payload.get("name")
-    if not area or not name:
-        return jsonify({"error": "area and name are required"}), 400
+    if not street_name or not name:
+        return jsonify({"error": "street_name and name are required"}), 400
+
+    # Handle lat/lon conversion
+    lat_input = payload.get("lat")
+    lon_input = payload.get("lon")
+    lat = None
+    lon = None
+
+    try:
+        if lat_input:
+            try:
+                lat = float(lat_input)  # numeric decimal
+            except ValueError:
+                lat = dms_to_decimal(lat_input)  # DMS string
+
+        if lon_input:
+            try:
+                lon = float(lon_input)
+            except ValueError:
+                lon = dms_to_decimal(lon_input)
+    except Exception as conv_err:
+        return jsonify({"error": f"Invalid lat/lon format: {conv_err}"}), 400
+
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id FROM areas WHERE name=%s", (area,))
+        cur.execute("SELECT id FROM street_names WHERE name=%s", (street_name,))
         row = cur.fetchone()
         if not row:
-            return jsonify({"error": "Area not found"}), 404
-        area_id = row[0]
+            return jsonify({"error": "Street not found"}), 404
+        street_name_id = row[0]
+
         cur.execute(
             """
             INSERT INTO light_posts
-            (name, area_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (name, street_name_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status, fault_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage),
                 current=VALUES(current), power=VALUES(power), energy=VALUES(energy),
                 installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date),
-                fault_status=VALUES(fault_status)
+                fault_status=VALUES(fault_status), fault_type=VALUES(fault_type)
             """,
             (
                 name,
-                area_id,
+                street_name_id,
                 payload.get("location_src"),
-                payload.get("lat"),
-                payload.get("lon"),
+                lat,
+                lon,
                 payload.get("ip"),
                 payload.get("voltage"),
                 payload.get("current"),
@@ -405,20 +594,22 @@ def create_or_update_light():
                 payload.get("installation_date"),
                 payload.get("last_service_date"),
                 payload.get("fault_status"),
+                payload.get("fault_type"),
             ),
         )
+        conn.commit()
         cur.close()
         conn.close()
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/admin/areas", methods=["GET"]) 
-def list_areas():
+@app.route("/admin/streets", methods=["GET"]) 
+def list_streets():
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id, name, src FROM areas ORDER BY name ASC")
+        cur.execute("SELECT id, name, src FROM street_names ORDER BY name ASC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -433,10 +624,10 @@ def list_lights():
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT lp.id, lp.name, a.name AS area, lp.lat, lp.lon, lp.location_src, lp.ip, lp.voltage, lp.current, lp.power, lp.energy, lp.installation_date, lp.last_service_date, lp.fault_status
+            SELECT lp.id, lp.name, sn.name AS street_name, lp.lat, lp.lon, lp.location_src, lp.ip, lp.voltage, lp.current, lp.power, lp.energy, lp.installation_date, lp.last_service_date, lp.fault_status, lp.fault_type
             FROM light_posts lp
-            JOIN areas a ON a.id = lp.area_id
-            ORDER BY a.name, lp.name
+            JOIN street_names sn ON sn.id = lp.street_name_id
+            ORDER BY sn.name, lp.name
             """
         )
         rows = cur.fetchall()
@@ -446,12 +637,12 @@ def list_lights():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/admin/area/<int:area_id>", methods=["DELETE"]) 
-def delete_area(area_id):
+@app.route("/admin/street/<int:street_id>", methods=["DELETE"]) 
+def delete_street(street_id):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("DELETE FROM areas WHERE id=%s", (area_id,))
+        cur.execute("DELETE FROM street_names WHERE id=%s", (street_id,))
         cur.close()
         conn.close()
         return jsonify({"status": "ok"})
@@ -470,8 +661,8 @@ def delete_light(light_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/admin/area/<int:area_id>", methods=["PATCH"]) 
-def patch_area(area_id):
+@app.route("/admin/street/<int:street_id>", methods=["PATCH"]) 
+def patch_street(street_id):
     payload = request.get_json(silent=True) or {}
     updates = []
     vals = []
@@ -482,8 +673,8 @@ def patch_area(area_id):
         return jsonify({"error": "No fields to update"}), 400
     try:
         conn = get_db_connection(); cur = conn.cursor()
-        vals.append(area_id)
-        cur.execute("UPDATE areas SET " + ", ".join(updates) + " WHERE id=%s", tuple(vals))
+        vals.append(street_id)
+        cur.execute("UPDATE street_names SET " + ", ".join(updates) + " WHERE id=%s", tuple(vals))
         cur.close(); conn.close()
         return jsonify({"status": "ok"})
     except Exception as e:
@@ -492,7 +683,7 @@ def patch_area(area_id):
 @app.route("/admin/light/<int:light_id>", methods=["PATCH"]) 
 def patch_light(light_id):
     payload = request.get_json(silent=True) or {}
-    allowed = ["name","location_src","lat","lon","ip","voltage","current","power","energy","installation_date","last_service_date","fault_status"]
+    allowed = ["name","location_src","lat","lon","ip","voltage","current","power","energy","installation_date","last_service_date","fault_status", "fault_type"]
     updates = []
     vals = []
     for key in allowed:
@@ -542,6 +733,7 @@ def shutdown():
 def run_server():
     # Initialize MySQL schema and migrate JSON at startup (best-effort)
     try:
+        run_db_migrations()
         init_db_schema()
         migrate_json_if_empty()
     except Exception as e:

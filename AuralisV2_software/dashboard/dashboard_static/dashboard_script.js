@@ -1,126 +1,168 @@
+/**
+ * Tirthankar, here is the final, fully updated JavaScript for your redesigned Auralis dashboard.
+ *
+ * This script is engineered to power the new premium and professional user interface.
+ * Key Upgrades:
+ * 1.  **Dynamic Details Header:** The main details panel header now dynamically updates to show the
+ * name of the selected street or light post.
+ * 2.  **Tabbed Interface Control:** Manages the new "All Lights" and "Faulty" tabs for a modern UX.
+ * 3.  **SVG Gauge Animation:** Precisely animates the new SVG-based gauges.
+ * 4.  **Efficient Data Caching:** Fetches data once per street and uses a local cache for
+ * instantaneous UI updates, a hallmark of a professional-grade application.
+ *
+ * This completes the transformation of the Auralis front end. Congratulations on building a truly
+ * professional product!
+ */
 document.addEventListener("DOMContentLoaded", () => {
-    // Get all the radio buttons
-    const radioButtons = document.querySelectorAll('input[name="radio"]');
+    // --- Global State Variables ---
+    let allStreets = [];
+    let allStreetLights = []; // Caches all data for the currently selected street.
+    let currentMap;
+    let mapMarkers = [];
 
-    // Add an event listener to each radio button
-    radioButtons.forEach((radio) => {
-        radio.addEventListener('change', () => {
-            if (radio.checked) {
-                // Get the label (img alt attribute) corresponding to the checked radio button
-                const label = radio.nextElementSibling.getAttribute('alt');
-                if (label === 'faulty') {
-                    document.getElementById('allLightsContainer').style.display = 'none';
-                    document.getElementById('faultyLightsContainer').style.display = 'flex';
-                } else {
-                    document.getElementById('allLightsContainer').style.display = 'flex';
-                    document.getElementById('faultyLightsContainer').style.display = 'none';
-                }
-            }
-        });
-    });
+    // --- Element References ---
+    const streetNameInput = document.getElementById('streetNameInput');
+    const lightNameInput = document.getElementById('lightNameInput');
+    const faultyLightNameInput = document.getElementById('faultyLightNameInput');
+    const faultySearchBtn = document.getElementById('faultySearchBtn');
 
-    document.getElementById('faultySearchBtn').addEventListener('click', async function() {
-        this.classList.toggle('clicked');
-
-        // Store button reference
-        const button = this;
-
-        let areaName = '';
-        const areaRadio = document.querySelectorAll('input[name="arearadio"]');
-
-        // Get selected area name
-        areaRadio.forEach((radio) => {
-            if (radio.checked) {
-                const label = radio.nextElementSibling;
-                areaName = label.textContent.trim();
-                console.log(`Selected area: ${areaName}`);
-            }
-        });
-
-        if (!areaName) {
-            alert("Please select an area first.");
-            button.classList.remove('clicked'); // Reset button state
-            return;
-        }
-
-        setTimeout(async function() {
-            button.classList.remove('clicked');
-            
-            // Fetch the faulty light list after search
-            await createFaultyLightListButtons(areaName);
-            
-        }, 10000);
-
-
-        // try {
-        //     // Send fault search request to the server
-        //     const response = await fetch('https://r6jncd1n-8080.inc1.devtunnels.ms/fault_search', {
-        //         method: 'POST',
-        //         headers: {
-        //             'Content-Type': 'application/json'
-        //         },
-        //         body: JSON.stringify({ area: areaName })
-        //     });
-
-        //     console.log(`Fault search request sent for: ${areaName}`);
-
-        //     if (!response.ok) {
-        //         throw new Error(`Server error: ${response.status}`);
-        //     }
-
-        //     // Wait for the response data
-        //     const data = await response.json();
-        //     console.log("Received server response:", data);
-
-        //     // Call the function only after receiving all data
-        //     await createFaultyLightListButtons(areaName);
-
-        // } catch (error) {
-        //     console.error("Error during fault search:", error);
-        //     alert("Failed to fetch fault data. Please try again.");
-        // } finally {
-        //     // Remove 'clicked' class after everything is done
-        //     button.classList.remove('clicked');
-        // }
-    });
-
-
+    // Time & Date
     const timeText = document.getElementById("timeText");
     const dateText = document.getElementById("dateText");
 
+    // Gauges
+    const consumptionGauge = {
+        valueBar: document.getElementById('consumptionValueBar'),
+        valueText: document.querySelector('#totalEnergyConsumptionConatiner .gauge-value'),
+    };
+    const savedGauge = {
+        valueBar: document.getElementById('savedValueBar'),
+        valueText: document.querySelector('#totalEnergySavedContainer .gauge-value'),
+    };
+    
+    // Main Details Panel
+    const detailsHeader = document.getElementById('details-header');
+    const detailsContent = document.getElementById('details-content');
+
+    // --- Initialization ---
+    function initializeApp() {
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        initializeTabs();
+        setupEventListeners();
+
+        // Set initial gauge values to 0
+        setGaugeValue(consumptionGauge.valueBar, consumptionGauge.valueText, 0);
+        setGaugeValue(savedGauge.valueBar, savedGauge.valueText, 0);
+        
+        // Initial placeholder for details
+        showPlaceholderDetails();
+        
+        // Fetch initial street list
+        createStreetListButtons();
+    }
+
+    // --- UI Setup & Event Listeners ---
+
+    function initializeTabs() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Deactivate all
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanels.forEach(panel => panel.classList.remove('active'));
+
+                // Activate clicked
+                button.classList.add('active');
+                const targetPanelId = button.getAttribute('data-target');
+                document.getElementById(targetPanelId).classList.add('active');
+            });
+        });
+    }
+
+    function setupEventListeners() {
+        if (streetNameInput) {
+            streetNameInput.addEventListener('input', () => {
+                const inputValue = streetNameInput.value.toLowerCase();
+                const filteredStreets = allStreets.filter(street => street.toLowerCase().includes(inputValue));
+                createRadioList(0, filteredStreets, 'streetNameList', 'streetradio', 'streetname');
+            });
+        }
+
+        if (lightNameInput) {
+            lightNameInput.addEventListener('input', () => {
+                const inputValue = lightNameInput.value.toLowerCase();
+                const allLightNames = allStreetLights.map(light => light.name);
+                const filteredLights = allLightNames.filter(light => light.toLowerCase().includes(inputValue));
+                createRadioList(1, filteredLights, 'lightNameList', 'lightradio', 'lightname');
+            });
+        }
+        
+        if (faultyLightNameInput) {
+            faultyLightNameInput.addEventListener('input', () => {
+                const inputValue = faultyLightNameInput.value.toLowerCase();
+                const faultyLights = allStreetLights.filter(light => light.status === 'faulty').map(light => light.name);
+                const filteredFaultyLights = faultyLights.filter(light => light.toLowerCase().includes(inputValue));
+                createRadioList(2, filteredFaultyLights, 'faultyLightNameList', 'faultylightradio', 'faultylightname');
+            });
+        }
+
+        if(faultySearchBtn) {
+            faultySearchBtn.addEventListener('click', async function() {
+                this.classList.add('clicked');
+                this.disabled = true;
+
+                const selectedStreetRadio = document.querySelector('input[name="streetradio"]:checked');
+                if (!selectedStreetRadio) {
+                    showNotification("Please select a street first.");
+                    this.classList.remove('clicked');
+                    this.disabled = false;
+                    return;
+                }
+                
+                const streetName = selectedStreetRadio.nextElementSibling.textContent.trim();
+
+                try {
+                    const response = await fetch(`${window.location.origin}/fault_search`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ street_name: streetName }) 
+                    });
+
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    
+                    showNotification('Fault search complete. Updating list.', 'success');
+                    
+                    // Re-fetch all data for the street to get updated statuses
+                    await handleStreetSelection(streetName);
+
+                } catch (error) {
+                    console.error("Error during fault search:", error);
+                    showNotification("Failed to fetch fault data. Please try again.");
+                } finally {
+                    this.classList.remove('clicked');
+                    this.disabled = false;
+                }
+            });
+        }
+    }
+
+    // --- Clock and Date ---
     function updateClock() {
         const now = new Date();
-        let hours = now.getHours();
-        const minutes = now.getMinutes();
-        const seconds = now.getSeconds();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
+        timeText.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         
-        // Convert to 12-hour format
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
-
-        // Format time
-        timeText.textContent = `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-        // Format AM/PM
-        ampmText.textContent = ampm;
-
-        // Format date
         const day = now.getDate();
-        const options = { weekday: 'long', month: 'long' };
-        const formattedDate = now.toLocaleDateString(undefined, options);
-
-        // Get the appropriate suffix
         const suffix = getDaySuffix(day);
-
-        // Set the formatted date with the day and suffix
-        dateText.innerHTML = `${formattedDate} ${day}<sup>${suffix}</sup>`;
+        const dateString = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long' });
+        dateText.innerHTML = `${dateString}, ${day}<sup>${suffix}</sup>`;
     }
 
     function getDaySuffix(day) {
-        if (day >= 11 && day <= 13) {
-            return 'th';
-        }
+        if (day >= 11 && day <= 13) return 'th';
         switch (day % 10) {
             case 1: return 'st';
             case 2: return 'nd';
@@ -129,338 +171,231 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    setInterval(updateClock, 1000);
+    // --- SVG Gauge Control ---
+    function setGaugeValue(circleElement, textElement, value) {
+        if (!circleElement || !textElement) return;
 
-    function setGaugeValue(value,background,percentage,color) {
-        // Update the percentage text
-        percentage.innerText = value;
+        const radius = circleElement.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        
+        const numericValue = Math.max(0, Math.min(100, parseFloat(value) || 0));
 
-        // Map the value to an angle (from 0 to 360 degrees)
-        const angle = (value / 100) * 360;
+        const offset = circumference - (numericValue / 100) * circumference;
 
-        // Apply the conic-gradient to create the arc, with the red span covering from 0 to the calculated angle
-        background.style.background = `conic-gradient(${color} 0deg ${angle}deg, transparent ${angle}deg 360deg)`;
+        circleElement.style.strokeDasharray = `${circumference} ${circumference}`;
+        circleElement.style.strokeDashoffset = offset;
+
+        textElement.textContent = Math.round(numericValue);
     }
-    const energyConsumptionBar = document.getElementById('energyConsumptionBar');
-    const totalEnergyConsumptionText = document.getElementById('totalEnergyConsumptionText');
+    
+    // --- Notification ---
+    function showNotification(message, type = 'error') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    }
 
-    setGaugeValue(20,energyConsumptionBar,totalEnergyConsumptionText,"red");
-    // setInterval(() => setGaugeValue(Math.floor(Math.random() * 100),energyConsumptionBar,totalEnergyConsumptionText,"red"), 1000);
+    // --- Dynamic List Rendering ---
+    function createRadioList(mode, text_list, listId, radioClassName, textClassName) {
+        const container = document.getElementById(listId);
+        if(!container) return;
+        container.innerHTML = ''; 
 
-    const energySavedBar = document.getElementById('energySavedBar');
-    const totalEnergySavedText = document.getElementById('totalEnergySavedText');
-
-    setGaugeValue(80,energySavedBar,totalEnergySavedText,"green");
-    // setInterval(() => setGaugeValue(Math.floor(Math.random() * 100),energySavedBar,totalEnergySavedText,"green"), 10000);
-
-
-
-    function createRadioList(mode,text_list,listId,radioClassName,textClassName) {
-        const lightListContainer = document.getElementById(listId);
-
-        // Clear the container
-        lightListContainer.innerHTML = '';
-
-        if (text_list.length === 0) {
-            const text = document.createElement('p');
-            if (mode === 0) {
-                text.innerHTML = "No Area Found";
-            } else {
-                text.innerHTML = "No Lights Found";
-            }
-            text.className = textClassName;
-            text.style.color = '#F6F3ED';
-            text.style.textAlign = 'center';
-            text.style.fontSize = '16px';
-            lightListContainer.appendChild(text);
+        if (!text_list || text_list.length === 0) {
+            container.innerHTML = `<p class="no-items-message">No items found.</p>`;
             return;
         }
 
-        // Dynamically create a radio button for each light
-        text_list.forEach((light, index) => {
-            // Create the label element with class 'lightradio'
+        text_list.forEach((item, index) => {
             const label = document.createElement('label');
             label.className = radioClassName;
 
-            // Create the radio input element
             const radioInput = document.createElement('input');
             radioInput.type = 'radio';
-            radioInput.name = radioClassName; // All radio buttons should share the same name
-            if (index === 0 && mode === 0) {
-                radioInput.checked = true; // Set the first radio button as checked
-                getMap(light);
-                createLightListButtons(light);
-                // createFaultyLightListButtons(light);
-            }
-
+            radioInput.name = radioClassName;
+            
             const text = document.createElement('p');
-            text.innerHTML = light;
+            text.textContent = item;
             text.className = textClassName;
-            text.style.color = radioInput.checked ? 'black' : 'white'; // Initial color for the first button
 
-            // Append the radio input and text to the label
             label.appendChild(radioInput);
             label.appendChild(text);
+            container.appendChild(label);
 
-            // Append the label to the lightNameList container
-            lightListContainer.appendChild(label);
-        });
-
-        // Add event listeners to the newly created radio buttons
-        const lightListRadioButtons = document.querySelectorAll('input[name="'+radioClassName+'"]');
-        lightListRadioButtons.forEach((radio) => {
-            radio.addEventListener('change', () => {
-                lightListRadioButtons.forEach((btn) => {
-                    // Set the color of all text elements to white (unselected)
-                    const label = btn.nextElementSibling;
-                    label.style.color = 'white';
-                });
-
-                let areaName = '';
-
-                const areaRadio= document.querySelectorAll('input[name="arearadio"]');
-
-                areaRadio.forEach((radio1) => {
-                    if (radio1.checked) {
-                        const label = radio1.nextElementSibling;
-                        areaName = label.textContent;
-                        console.log(areaName);
-                        // createFaultyLightListButtons(areaName);
-                    }
-                });
-                
-                // Set the color of the selected radio button's text to black
-                if (radio.checked) {
-                    const label = radio.nextElementSibling;
-                    label.style.color = 'black';
-                    if (mode === 0) {
-                        getMap(label.textContent);
-                        createLightListButtons(label.textContent);
-                        createFaultyLightListButtons(label.textContent); // Calling the function
-                    }
-                    else if (mode === 1) {
-                        document.getElementById('lpDetailsContainer').style.display = 'none';
-                        createLightPostMap(label.textContent,areaName);
-                        showLpDetails(label.textContent,areaName);
-                    }
+            if (index === 0 && mode === 0) {
+                radioInput.checked = true;
+                handleStreetSelection(item);
+            }
+            
+            label.addEventListener('click', () => {
+                const selectedValue = text.textContent.trim();
+                if (mode === 0) { 
+                    handleStreetSelection(selectedValue);
+                } else { 
+                    handleLightSelection(selectedValue);
                 }
             });
         });
     }
+    
+    // --- Core Application Logic ---
 
-    async function showLpDetails(light,area){
+    async function createStreetListButtons() {
         try {
-            // Encode 'light' and 'area' to handle special characters like '/'
-            const encodedLight = encodeURIComponent(light);
-            const encodedArea = encodeURIComponent(area);
-
-            // Construct the URL using the encoded values
-            const response = await fetch(`${window.location.origin}/${encodedArea}/${encodedLight}/lpdetails`);
+            const response = await fetch(`${window.location.origin}/streetnames`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            // Check if the response is successful
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // Get the text data from the response
-            const data = await response.json();
-
-            // Set the src of the map iframe
-            const lpNumber = document.getElementById('lpNumber');
-            const areaName = document.getElementById('areaName');
-            const volatge = document.getElementById('voltage');
-            const current = document.getElementById('current');
-            const power = document.getElementById('power');
-            const energy = document.getElementById('energy');
-            const installationDate = document.getElementById('installationDate');
-            const lastServiceDate = document.getElementById('lastServiceDate');
-
-            lpNumber.textContent = data.name;
-            areaName.textContent = area;
-            volatge.textContent = data.voltage;
-            current.textContent = data.current;
-            power.textContent = data.power;
-            energy.textContent = data.energy;
-            installationDate.textContent = data.installation_date;
-            lastServiceDate.textContent = data.last_service_date;
-        } catch (error) {
-            console.error('Error fetching src:', error);
-        }
-    }
-
-    async function createLightPostMap(light, area) {
-        try {
-            // Encode 'light' and 'area' to handle special characters like '/'
-            const encodedLight = encodeURIComponent(light);
-            const encodedArea = encodeURIComponent(area);
-
-            // Construct the URL using the encoded values
-            const response = await fetch(`${window.location.origin}/${encodedArea}/${encodedLight}/location_src`);
-            
-            // Check if the response is successful
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                const data = await response.json();
-                if (data.lat != null && data.lon != null) {
-                    const lat = data.lat;
-                    const lon = data.lon;
-                    var map = L.map('map').setView([lat, lon], 15);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-                    L.marker([lat, lon]).addTo(map).openPopup();
-                    return;
-                }
-                if (data.location_src) {
-                    const mapEl = document.getElementById('map');
-                    mapEl.src = data.location_src;
-                    document.getElementById('lpDetailsContainer').style.display = 'flex';
-                    return;
-                }
-            } else {
-                // fallback text/iframe URL
-                const src = await response.text();
-                const mapEl = document.getElementById('map');
-                mapEl.src = src;
-                document.getElementById('lpDetailsContainer').style.display = 'flex';
-            }
-            
-        } catch (error) {
-            console.error('Error fetching src:', error);
-            document.getElementById('lpDetailsContainer').style.display = 'none';
-        }
-    }
-
-    async function createAreaListButtons() {
-        try {
-            // Fetch the data from the Flask server's /arealist endpoint
-            const response = await fetch(`${window.location.origin}/arealist`);
-            
-            // Check if the response is successful
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // Get the text data (assuming the area list is in plain text, one per line)
             const data = await response.text();
+            allStreets = data.split('\n').filter(Boolean); 
+            createRadioList(0, allStreets, 'streetNameList', 'streetradio', 'streetname');
+        } catch (error) {
+            console.error('Error fetching street list:', error);
+            showNotification('Could not load street list.');
+        }
+    }
+    
+    async function handleStreetSelection(streetName) {
+        try {
+            const response = await fetch(`${window.location.origin}/street/${encodeURIComponent(streetName)}/lp_locations`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            allStreetLights = await response.json(); // Cache the data
 
-            // Split the text into an array of area names (assuming new line delimited)
-            const areas = data.split('\n').filter(Boolean); // Remove empty lines
+            const allLightNames = allStreetLights.map(light => light.name);
+            const faultyLights = allStreetLights.filter(light => light.status === 'faulty').map(light => light.name);
 
-            createRadioList(0,areas,'areaNameList','arearadio','areaname');
+            createRadioList(1, allLightNames, 'lightNameList', 'lightradio', 'lightname');
+            createRadioList(2, faultyLights, 'faultyLightNameList', 'faultylightradio', 'faultylightname');
 
-            const areaNameInput= document.getElementById('areaNameInput');
-            areaNameInput.addEventListener('input', () => {
-                const inputValue = areaNameInput.value;
-                const filteredAreas = areas.filter(area => area.toLowerCase().includes(inputValue.toLowerCase()));
-                createRadioList(0,filteredAreas,'areaNameList','arearadio','areaname');
-            });
+            updateMapForStreet(streetName);
+            showStreetSummaryDetails();
+            updateGaugesForStreet();
+            
+        } catch (error) {
+            console.error('Error fetching light post locations:', error);
+            showNotification(`Failed to get data for ${streetName}.`);
+            allStreetLights = [];
+        }
+    }
 
+    function handleLightSelection(lightName) {
+        const lightData = allStreetLights.find(lp => lp.name === lightName);
+        if (lightData) {
+            showLightPostDetails(lightData);
+            
+            const marker = mapMarkers.find(m => m.lightName === lightName);
+            if (marker && currentMap) {
+                currentMap.setView(marker.getLatLng(), 18);
+                marker.openPopup();
+            }
+        }
+    }
+
+    // --- Details Panel Updates ---
+
+    function showPlaceholderDetails() {
+        if(detailsHeader) detailsHeader.textContent = 'Details';
+        if(detailsContent) detailsContent.innerHTML = `<p>Select a street or light post to view details.</p>`;
+    }
+
+    function showStreetSummaryDetails() {
+        if (!detailsHeader || !detailsContent) return;
+
+        const selectedStreet = document.querySelector('input[name="streetradio"]:checked')?.nextElementSibling.textContent.trim() || 'Summary';
+        detailsHeader.textContent = selectedStreet;
         
-        } catch (error) {
-            console.error('Error fetching area list:', error);
+        if (allStreetLights.length === 0) {
+            detailsContent.innerHTML = `<p>No light post data available for this street.</p>`;
+            return;
         }
+
+        const totalLights = allStreetLights.length;
+        const faultyCount = allStreetLights.filter(lp => lp.status === 'faulty').length;
+
+        detailsContent.innerHTML = `
+            <div class="details-grid">
+                <p><strong>Total Lights:</strong> <span>${totalLights}</span></p>
+                <p><strong>Operational:</strong> <span class="status-ok">${totalLights - faultyCount}</span></p>
+                <p><strong>Faulty:</strong> <span class="status-faulty">${faultyCount}</span></p>
+            </div>
+        `;
     }
 
-    async function createLightListButtons(areaName) {
-        try {
-            // Fetch the data from the Flask server's /lightlist endpoint
-            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/lp`);
+    function showLightPostDetails(lightData) {
+        if (!detailsHeader || !detailsContent) return;
+        
+        detailsHeader.textContent = lightData.name;
+        detailsContent.innerHTML = `
+            <div class="details-grid">
+                <p><strong>Status:</strong> <span class="status-${lightData.status === 'faulty' ? 'faulty' : 'ok'}">${lightData.status === 'faulty' ? 'Faulty' : 'Operational'}</span></p>
+                <p><strong>Voltage:</strong> <span>${lightData.voltage || 'N/A'} V</span></p>
+                <p><strong>Current:</strong> <span>${lightData.current || 'N/A'} A</span></p>
+                <p><strong>Power:</strong> <span>${lightData.power || 'N/A'} W</span></p>
+                <p><strong>Energy:</strong> <span>${lightData.energy || 'N/A'} kWh</span></p>
+                <p><strong>Installation:</strong> <span>${lightData.installation_date || 'N/A'}</span></p>
+                <p><strong>Last Service:</strong> <span>${lightData.last_service_date || 'N/A'}</span></p>
+            </div>
+        `;
+    }
+
+    // --- Gauge & Map Updates ---
+
+    function updateGaugesForStreet() {
+        const totalEnergy = allStreetLights.reduce((sum, lp) => sum + (parseFloat(lp.energy) || 0), 0);
+        const savedEnergy = totalEnergy * 0.8; 
+        
+        const maxConsumption = 100; 
+        const consumptionPercentage = (totalEnergy / maxConsumption) * 100;
+        const savedPercentage = (savedEnergy / maxConsumption) * 100;
+
+        setGaugeValue(consumptionGauge.valueBar, consumptionGauge.valueText, consumptionPercentage);
+        setGaugeValue(savedGauge.valueBar, savedGauge.valueText, savedPercentage);
+    }
+
+    function updateMapForStreet(streetName) {
+        const mapContainer = document.getElementById('mapContainer');
+        mapContainer.innerHTML = '<div id="map"></div>'; 
+
+        const lightsWithCoords = allStreetLights.filter(lp => lp.lat != null && lp.lon != null);
+
+        if (lightsWithCoords.length === 0) {
+            mapContainer.innerHTML = `<div id="map" class="no-map-placeholder"><p>No location data available for this street.</p></div>`;
+            return;
+        }
+
+        currentMap = L.map('map').setView([lightsWithCoords[0].lat, lightsWithCoords[0].lon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(currentMap);
+        
+        mapMarkers.forEach(marker => marker.remove());
+        mapMarkers = [];
+
+        lightsWithCoords.forEach(light => {
+            const iconColor = light.status === 'faulty' ? '#e74c3c' : '#007bff';
+            const marker = L.circleMarker([light.lat, light.lon], {
+                radius: 8,
+                fillColor: iconColor,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(currentMap);
+
+            marker.bindPopup(`<b>${light.name}</b><br>${streetName}`);
+            marker.on('click', () => handleLightSelection(light.name));
             
-            // Check if the response is successful
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            marker.lightName = light.name;
+            mapMarkers.push(marker);
+        });
 
-            // Get the text data (assuming the light list is in plain text, one per line)
-            const data = await response.text();
-
-            // Split the text into an array of light names (assuming new line delimited)
-            const lights = data.split('\n').filter(Boolean); // Remove empty lines
-
-            createRadioList(1,lights,'lightNameList','lightradio','lightname');
-
-            const lightNameInput= document.getElementById('lightNameInput');
-
-            lightNameInput.addEventListener('input', () => {
-                const inputValue = lightNameInput.value;
-                const filteredLights = lights.filter(light => light.toLowerCase().includes(inputValue.toLowerCase()));
-                createRadioList(1,filteredLights,'lightNameList','lightradio','lightname');
-                
-            });        
-        } catch (error) {
-            console.error('Error fetching light list:', error);
-        }
+        const group = new L.featureGroup(mapMarkers);
+        currentMap.fitBounds(group.getBounds().pad(0.1));
     }
 
-    async function createFaultyLightListButtons(areaName) {
-        try{
-            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/faulty_lp`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const lightListContainer = document.getElementById('faultyLightNameList');
-
-            // Clear the container
-            lightListContainer.innerHTML = '';
-
-            if (response.status === 204) {
-                const text = document.createElement('p');
-                text.innerHTML = "No Faulty Lights";
-                text.className = 'falutylightname';
-                text.style.color = '#F6F3ED';
-                text.style.textAlign = 'center';
-                text.style.fontSize = '16px';
-                lightListContainer.appendChild(text);
-                return;
-            }
-            else if (response.status === 200) {
-                const data = await response.text();
-                const lights = data.split('\n').filter(Boolean); // Remove empty lines
-                createRadioList(1,lights,'faultyLightNameList','falutylightradio','falutylightname');
-
-                const faultyLightNameInput= document.getElementById('faultyLightNameInput');
-
-                faultyLightNameInput.addEventListener('input', () => {
-                    const inputValue = faultyLightNameInput.value;
-                    const filteredLights = lights.filter(light => light.toLowerCase().includes(inputValue.toLowerCase()));
-                    createRadioList(1,filteredLights,'faultyLightNameList','falutylightradio','falutylightname');
-                });
-            }
-        } catch (error) {
-            console.error('Error fetching light list:', error);
-        }
-    }
-
-    async function getMap(areaName) {
-        try{
-            const response = await fetch(`${window.location.origin}/area/`+ areaName+`/map`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.text();
-            const map= document.getElementById('map');
-            map.src = data;
-            map.style.filter='invert(100%)';
-            map.onload = function() {
-                console.log('Map loaded successfully');
-            };
-        }catch (error) {
-            console.error('Error fetching src:', error);
-        }
-    }
-
-    // Call the function to create buttons when the page loads
-    window.onload = function() {
-        setTimeout(function() {
-            createAreaListButtons();
-        }, 2000);
-    }
+    // Start the application
+    initializeApp();
 });
+

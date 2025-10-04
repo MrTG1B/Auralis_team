@@ -1,506 +1,580 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Auralis Super Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FIX: Added 'defer' to the Alpine.js script tag -->
+  <!-- This ensures Alpine.js waits for the full page to be ready before it runs, preventing initialization errors. -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* General Body and Font Styles */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      margin: 0;
-      background-color: #f3f4f6; /* formerly bg-gray-100 */
-      color: #1f2937; /* formerly text-gray-800 */
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a; /* slate-900 */
+      color: #cbd5e1; /* slate-300 */
     }
-
-    /* Main container for content */
-    .container {
-      max-width: 80rem; /* formerly max-w-7xl */
-      margin: 0 auto;
-      padding: 1.5rem; /* formerly p-6 */
-    }
-
-    h1 {
-      font-size: 1.5rem; /* formerly text-2xl */
-      font-weight: 700; /* formerly font-bold */
-      margin-bottom: 1.5rem; /* formerly mb-6 */
-    }
-
-    h2 {
-      font-size: 1.125rem; /* formerly text-lg */
-      font-weight: 600; /* formerly font-semibold */
-    }
-
-    /* Loader Styles */
-    #loader {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1rem;
-    }
-
-    #loader.hidden {
-      display: none;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 1.5rem; /* formerly w-6 */
-      height: 1.5rem; /* formerly h-6 */
-      border: 4px solid #3b82f6; /* formerly border-4 border-blue-500 */
-      border-top-color: transparent; /* formerly border-t-transparent */
-      border-radius: 50%; /* formerly rounded-full */
-      margin-right: 0.5rem; /* formerly mr-2 */
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    #loader span:last-child {
-      font-size: 0.875rem; /* formerly text-sm */
-      color: #4b5563; /* formerly text-gray-600 */
-    }
-
-    /* Toast Notification Styles */
-    .toast {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-      z-index: 50;
-      display: none;
-    }
-    .toast-ok {
-        background-color: #059669; /* emerald-600 */
-    }
-    .toast-err {
-        background-color: #dc2626; /* red-600 */
-    }
-
-    /* Layout Grid */
-    .grid-layout {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    @media (min-width: 1024px) {
-      .grid-layout {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    /* Card Styles */
     .card {
-      background-color: white;
-      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
-      border-radius: 0.75rem; /* formerly rounded-xl */
-      padding: 1rem; /* formerly p-4 */
+        background-color: #1e293b; /* slate-800 */
+        border: 1px solid #334155; /* slate-700 */
     }
-
-    .card-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.75rem; /* formerly mb-3 */
-      gap: 0.75rem;
-    }
-    
-    .card-header .add-area-controls {
-      display: flex;
-      gap: 0.5rem; /* formerly space-x-2 */
-    }
-
-    .card-header .add-light-controls {
-        display: grid;
-        gap: 0.5rem; /* formerly gap-2 */
-        width: 100%;
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    @media (min-width: 768px) {
-        .card-header .add-light-controls {
-            grid-template-columns: repeat(6, 1fr);
-        }
-    }
-
-    /* Table Styles */
     .table-container {
-      overflow: auto;
-      max-height: 60vh; /* Added for better scrolling on large tables */
+        border-radius: 0.5rem;
+        overflow-x: auto;
     }
-
-    .data-table {
-      min-width: 100%;
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem; /* formerly text-sm */
-    }
-
-    .data-table thead {
-      background-color: #f3f4f6; /* formerly bg-gray-100 */
-      position: sticky;
-      top: 0;
-    }
-
-    .data-table th {
-      padding: 0.5rem 0.75rem; /* formerly px-3 py-2 */
-      text-align: left; /* formerly text-left */
-      font-weight: 600;
-    }
-
-    .data-table tbody tr:nth-child(even) {
-        background-color: #f9fafb; /* formerly even:bg-gray-50 */
-    }
-    .data-table tbody tr:hover {
-        background-color: #f9fafb; /* formerly hover:bg-gray-50 */
-    }
-
-    .data-table td {
-      padding: 0.5rem 0.75rem; /* formerly px-3 py-2 */
-      white-space: nowrap;
-    }
-
-    /* Form Input and Button Styles (from original file) */
+    .table-container::-webkit-scrollbar { height: 8px; }
+    .table-container::-webkit-scrollbar-track { background: #1e293b; }
+    .table-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    .table-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    
     .input {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      padding: 6px 10px;
-      width: 100%;
-      outline: none;
-      box-sizing: border-box;
+        background-color: #334155;
+        border: 1px solid #475569;
+        color: #f1f5f9;
     }
     .input:focus {
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-      border-color: #2563eb;
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
     }
-    .btn {
-      background: #2563eb;
-      color: white;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
+    .toast { 
+        display: none; 
+        position: fixed; 
+        top: 1.5rem; 
+        right: 1.5rem; 
+        z-index: 100;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
     }
-    .btn:hover {
-      filter: brightness(0.95);
-    }
-    .btn-danger {
-      background: #dc2626;
-      color: white;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-danger:hover {
-      filter: brightness(0.95);
-    }
-  </style>
-  <script>
-    function showToast(msg, type = 'ok') {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      // Use CSS classes for styling
-      el.className = 'toast'; // Reset classes
-      el.classList.add(type === 'err' ? 'toast-err' : 'toast-ok');
-      el.style.display = 'block';
-      setTimeout(() => {
-        el.style.display = 'none';
-      }, 2500);
-    }
-
-    function setLoading(on) {
-      const l = document.getElementById('loader');
-      // Toggle a single class to show/hide
-      if (on) {
-        l.classList.remove('hidden');
-      } else {
-        l.classList.add('hidden');
-      }
-    }
-
-    async function fetchJSON(url, opts = {}) {
-      const r = await fetch(url, {
-        cache: 'no-store',
-        ...opts
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error(t || (`HTTP ${r.status}`));
-      }
-      const ct = r.headers.get('content-type') || '';
-      return ct.includes('application/json') ? r.json() : r.text();
-    }
-
-    async function load() {
-      try {
-        setLoading(true);
-        const [areas, lights] = await Promise.all([
-          fetchJSON('/admin/areas'),
-          fetchJSON('/admin/lights')
-        ]);
-        renderAreas(areas);
-        renderLights(lights);
-      } catch (e) {
-        showToast(`Load failed: ${e.message || e}`, 'err');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    function renderAreas(rows) {
-      const tbody = document.getElementById('areas-tbody');
-      tbody.innerHTML = '';
-      for (const r of rows) {
-        const tr = document.createElement('tr'); // Removed Tailwind classes
-        tr.innerHTML = `
-          <td>${r.id}</td>
-          <td><input class="input" value="${r.name||''}" data-field="name" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.src||''}" data-field="src" data-id="${r.id}"></td>
-          <td><button class="btn" onclick="saveArea(${r.id})">Save</button> <button class="btn-danger" onclick="delArea(${r.id})">Delete</button></td>`;
-        tbody.appendChild(tr);
-      }
-    }
-
-    function renderLights(rows) {
-      const tbody = document.getElementById('lights-tbody');
-      tbody.innerHTML = '';
-      for (const r of rows) {
-        const tr = document.createElement('tr'); // Removed Tailwind classes
-        tr.innerHTML = `
-          <td>${r.id}</td>
-          <td><input class="input" value="${r.name||''}" data-field="name" data-id="${r.id}"></td>
-          <td>${r.area}</td>
-          <td><input class="input" value="${r.lat ?? ''}" data-field="lat" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.lon ?? ''}" data-field="lon" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.ip||''}" data-field="ip" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.voltage||''}" data-field="voltage" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.current||''}" data-field="current" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.power||''}" data-field="power" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.energy||''}" data-field="energy" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.location_src||''}" data-field="location_src" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.installation_date||''}" data-field="installation_date" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.last_service_date||''}" data-field="last_service_date" data-id="${r.id}"></td>
-          <td><input class="input" value="${r.fault_status||''}" data-field="fault_status" data-id="${r.id}"></td>
-          <td><button class="btn" onclick="saveLight(${r.id})">Save</button> <button class="btn-danger" onclick="delLight(${r.id})">Delete</button></td>`;
-        tbody.appendChild(tr);
-      }
+    .toast.show {
+        opacity: 1;
+        transform: translateX(0);
     }
     
-    async function saveArea(id) {
-      try {
-        const inputs = document.querySelectorAll(`#areas-tbody input[data-id='${id}']`);
-        const payload = {};
-        inputs.forEach(i => {
-          if (i.dataset.field) payload[i.dataset.field] = i.value;
-        });
-        await fetchJSON('/admin/area/' + id, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        showToast('Area updated');
-        await load();
-      } catch (e) {
-        showToast(`Update failed: ${e.message || e}`, 'err');
-      }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+    
+    [x-cloak] { display: none !important; }
+
+    .tooltip { position: relative; display: inline-block; max-width: 100%; }
+    .tooltip .tooltip-text {
+        visibility: hidden;
+        width: max-content;
+        max-width: 300px;
+        background-color: #0f172a;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px 10px;
+        position: absolute;
+        z-index: 10;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        border: 1px solid #334155;
+        word-wrap: break-word;
     }
-    async function delArea(id) {
-      try {
-        await fetchJSON('/admin/area/' + id, {
-          method: 'DELETE'
-        });
-        showToast('Area deleted');
-        await load();
-      } catch (e) {
-        showToast(`Delete failed: ${e.message || e}`, 'err');
-      }
-    }
-    async function saveLight(id) {
-      try {
-        const inputs = document.querySelectorAll(`#lights-tbody input[data-id='${id}']`);
-        const payload = {};
-        inputs.forEach(i => {
-          if (i.dataset.field) payload[i.dataset.field] = i.value;
-        });
-        if (payload.lat !== undefined && payload.lat !== '') payload.lat = parseFloat(payload.lat);
-        if (payload.lon !== undefined && payload.lon !== '') payload.lon = parseFloat(payload.lon);
-        await fetchJSON('/admin/light/' + id, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        showToast('Light updated');
-        await load();
-      } catch (e) {
-        showToast(`Update failed: ${e.message || e}`, 'err');
-      }
-    }
-    async function delLight(id) {
-      try {
-        await fetchJSON('/admin/light/' + id, {
-          method: 'DELETE'
-        });
-        showToast('Light deleted');
-        await load();
-      } catch (e) {
-        showToast(`Delete failed: ${e.message || e}`, 'err');
-      }
-    }
-    async function addArea() {
-      try {
-        const name = document.getElementById('newAreaName').value.trim();
-        const src = document.getElementById('newAreaSrc').value.trim();
-        if (!name) return;
-        await fetchJSON('/admin/area', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name,
-            src
-          })
-        });
-        document.getElementById('newAreaName').value = '';
-        document.getElementById('newAreaSrc').value = '';
-        showToast('Area added');
-        await load();
-      } catch (e) {
-        showToast(`Add failed: ${e.message || e}`, 'err');
-      }
-    }
-    async function addLight() {
-      try {
-        const area = document.getElementById('newLightArea').value.trim();
-        const name = document.getElementById('newLightName').value.trim();
-        if (!area || !name) return;
-        const payload = {
-          area,
-          name,
-          lat: document.getElementById('new_lat').value ? parseFloat(document.getElementById('new_lat').value) : null,
-          lon: document.getElementById('new_lon').value ? parseFloat(document.getElementById('new_lon').value) : null,
-          location_src: document.getElementById('new_location_src').value,
-          ip: document.getElementById('new_ip').value,
-          voltage: document.getElementById('new_voltage').value,
-          current: document.getElementById('new_current').value,
-          power: document.getElementById('new_power').value,
-          energy: document.getElementById('new_energy').value,
-          installation_date: document.getElementById('new_installation_date').value,
-          last_service_date: document.getElementById('new_last_service_date').value,
-          fault_status: document.getElementById('new_fault_status').value,
+    .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+  </style>
+  <script>
+    const fetchJSON = async (url, opts = {}) => {
+        const r = await fetch(url, { cache: 'no-store', ...opts });
+        if (!r.ok) {
+            const t = await r.text();
+            throw new Error(t || `HTTP ${r.status}`);
+        }
+        const ct = r.headers.get('content-type') || '';
+        return ct.includes('application/json') ? r.json() : r.text();
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return dateString; // Return original string if date is not valid
+        }
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    };
+
+    const showToast = (msg, type = 'ok') => {
+        const toastEl = document.getElementById('toast');
+        const iconEl = document.getElementById('toast-icon');
+        const messageEl = document.getElementById('toast-message');
+        const icons = {
+            ok: `<div class="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200"><svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/></svg></div>`,
+            err: `<div class="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200"><svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/></svg></div>`
         };
-        await fetchJSON('/admin/light', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        ['newLightArea', 'newLightName', 'new_lat', 'new_lon', 'new_location_src', 'new_ip', 'new_voltage', 'new_current', 'new_power', 'new_energy', 'new_installation_date', 'new_last_service_date', 'new_fault_status'].forEach(id => document.getElementById(id).value = '');
-        showToast('Light added');
-        await load();
-      } catch (e) {
-        showToast(`Add failed: ${e.message || e}`, 'err');
-      }
-    }
-    window.onload = load;
+        iconEl.innerHTML = icons[type] || icons['ok'];
+        messageEl.textContent = msg;
+        
+        toastEl.style.display = 'flex';
+        setTimeout(() => {
+            toastEl.classList.add('show');
+        }, 10);
+
+        setTimeout(() => {
+            toastEl.classList.remove('show');
+            setTimeout(() => {
+                toastEl.style.display = 'none';
+            }, 300);
+        }, 3000);
+    };
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('adminDashboard', () => ({
+            // State
+            streets: [],
+            lights: [],
+            isLoading: false,
+            isSidebarOpen: true,
+            selectedStreet: null,
+
+            isEditModalOpen: false,
+            isDeleteModalOpen: false,
+            isAddStreetModalOpen: false,
+
+            editingItem: {},
+            editingType: null,
+            itemToDelete: {},
+            deleteType: null,
+            newStreet: { name: '', src: '' },
+            newLight: {
+                area: '', name: '', lat: null, lon: null, ip: '', voltage: '',
+                current: '', power: '', energy: '', location_src: '',
+                installation_date: '', last_service_date: '', fault_status: 'No Fault', fault_type: 'None'
+            },
+            
+            // Computed
+            get filteredLights() {
+                if (!this.selectedStreet) return [];
+                return this.lights.filter(light => light.area === this.selectedStreet.name);
+            },
+
+            // Init
+            init() {
+                this.load();
+                this.$watch('streets', () => this.$nextTick(() => lucide.createIcons()));
+                this.$watch('lights', () => this.$nextTick(() => lucide.createIcons()));
+                this.$watch('selectedStreet', () => this.$nextTick(() => lucide.createIcons()));
+            },
+            
+            // Methods
+            async load() {
+                this.isLoading = true;
+                try {
+                    const [streetsData, lightsData] = await Promise.all([fetchJSON('/admin/streets'), fetchJSON('/admin/lights')]);
+                    this.streets = streetsData;
+                    // FIX: Normalize lights data to ensure 'area' property exists for frontend logic
+                    this.lights = lightsData.map(light => {
+                        if (light.street_name) {
+                            light.area = light.street_name;
+                        }
+                        return light;
+                    });
+                } catch (e) {
+                    showToast(`Load failed: ${e.message || e}`, 'err');
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            selectStreet(street) {
+                this.selectedStreet = street;
+                this.newLight.area = street.name;
+            },
+
+            openEditModal(item, type) {
+                this.editingItem = JSON.parse(JSON.stringify(item));
+                this.editingType = type;
+                this.isEditModalOpen = true;
+            },
+            
+            async saveChanges() {
+                const saveFunction = this.editingType === 'street' ? this.saveStreet.bind(this) : this.saveLight.bind(this);
+                await saveFunction(this.editingItem.id, this.editingItem);
+                this.isEditModalOpen = false;
+            },
+            
+            async saveStreet(id, data) {
+                try {
+                    await fetchJSON(`/admin/street/${id}`, {
+                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                    showToast('Street updated successfully');
+                    await this.load();
+                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
+            },
+            
+            async saveLight(id, data) {
+                try {
+                    const payload = { ...data };
+                    if (payload.area) {
+                        payload.street_name = payload.area;
+                        delete payload.area;
+                    }
+                    if (payload.lat) payload.lat = parseFloat(payload.lat);
+                    if (payload.lon) payload.lon = parseFloat(payload.lon);
+                    await fetchJSON(`/admin/light/${id}`, {
+                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Light updated successfully');
+                    await this.load();
+                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
+            },
+            
+            openDeleteModal(item, type) {
+                this.itemToDelete = item;
+                this.deleteType = type;
+                this.isDeleteModalOpen = true;
+            },
+
+            async confirmDelete() {
+                const deleteFunction = this.deleteType === 'street' ? this.delStreet.bind(this) : this.delLight.bind(this);
+                await deleteFunction(this.itemToDelete.id);
+                this.isDeleteModalOpen = false;
+            },
+
+            async delStreet(id) {
+                try {
+                    await fetchJSON(`/admin/street/${id}`, { method: 'DELETE' });
+                    showToast('Street deleted');
+                    if (this.selectedStreet && this.selectedStreet.id === id) {
+                        this.selectedStreet = null;
+                    }
+                    await this.load();
+                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
+            },
+
+            async delLight(id) {
+                try {
+                    await fetchJSON(`/admin/light/${id}`, { method: 'DELETE' });
+                    showToast('Light deleted');
+                    await this.load();
+                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
+            },
+
+            async addStreet() {
+                if (!this.newStreet.name) return showToast('Street name is required.', 'err');
+                try {
+                    await fetchJSON('/admin/street', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.newStreet)
+                    });
+                    this.newStreet = { name: '', src: '' };
+                    showToast('Street added successfully');
+                    this.isAddStreetModalOpen = false;
+                    await this.load();
+                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
+            },
+
+            async addLight() {
+                if (!this.newLight.area || !this.newLight.name) return showToast('Street and Light Name are required.', 'err');
+                try {
+                    const payload = { ...this.newLight };
+                    if (payload.area) {
+                        payload.street_name = payload.area;
+                        delete payload.area;
+                    }
+                    await fetchJSON('/admin/light', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    this.newLight = { area: this.selectedStreet.name, name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'No Fault', fault_type: 'None' };
+                    showToast('Light added successfully');
+                    await this.load();
+                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
+            }
+        }));
+    });
   </script>
 </head>
-<body>
-  <div id="toast" class="toast"></div>
-  <div class="container">
-    <h1>Auralis Super Admin</h1>
-    <div id="loader" class="hidden">
-        <span class="spinner"></span>
-        <span>Loading...</span>
-    </div>
-    <div class="grid-layout">
-      <div class="card">
-        <div class="card-header">
-          <h2>Areas</h2>
-          <div class="add-area-controls">
-            <input id="newAreaName" class="input" placeholder="New area name" />
-            <input id="newAreaSrc" class="input" placeholder="Map src" />
-            <button class="btn" onclick="addArea()">Add</button>
-          </div>
-        </div>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Map Src</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="areas-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Lights</h2>
-          <div class="add-light-controls">
-            <input id="newLightArea" class="input" placeholder="Area name" />
-            <input id="newLightName" class="input" placeholder="Light name" />
-            <input id="new_lat" class="input" placeholder="Lat" />
-            <input id="new_lon" class="input" placeholder="Lon" />
-            <input id="new_ip" class="input" placeholder="IP" />
-            <input id="new_voltage" class="input" placeholder="Voltage" />
-            <input id="new_current" class="input" placeholder="Current" />
-            <input id="new_power" class="input" placeholder="Power" />
-            <input id="new_energy" class="input" placeholder="Energy" />
-            <input id="new_location_src" class="input" placeholder="Location src" />
-            <input id="new_installation_date" class="input" placeholder="Installation date" />
-            <input id="new_last_service_date" class="input" placeholder="Last service date" />
-            <input id="new_fault_status" class="input" placeholder="Fault status" />
-            <button class="btn" onclick="addLight()">Add</button>
-          </div>
-        </div>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Area</th>
-                <th>Lat</th>
-                <th>Lon</th>
-                <th>IP</th>
-                <th>V</th>
-                <th>I</th>
-                <th>P</th>
-                <th>E</th>
-                <th>Location Src</th>
-                <th>Install</th>
-                <th>Last Serv.</th>
-                <th>Fault</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="lights-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+<body x-data="adminDashboard" class="flex h-screen overflow-hidden">
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast flex items-center w-full max-w-xs p-3 space-x-3 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800" role="alert">
+    <div id="toast-icon"></div>
+    <div id="toast-message" class="text-sm font-normal"></div>
   </div>
+
+  <!-- Sidebar -->
+    <aside
+        class="flex flex-col bg-slate-800 border-r border-slate-700 transition-all duration-300 ease-in-out"
+        :class="isSidebarOpen ? 'w-64' : 'w-0 opacity-0'"
+        x-show="isSidebarOpen"
+        x-transition:enter="transition ease-in-out duration-300"
+        x-transition:enter-start="-translate-x-full"
+        x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition ease-in-out duration-300"
+        x-transition:leave-start="translate-x-0"
+        x-transition:leave-end="-translate-x-full"
+    >
+        <div class="p-4 border-b border-slate-700">
+            <button @click="isAddStreetModalOpen = true" class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-sky-500 text-white shadow hover:bg-sky-500/90 h-9 px-4 py-2">
+                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Add Street
+            </button>
+        </div>
+        <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+            <template x-for="street in streets" :key="street.id">
+                <div x-data="{ menuOpen: false }" class="relative rounded-md" :class="{ 'bg-slate-700': menuOpen }">
+                    <div class="flex items-center justify-between w-full p-2 text-sm font-medium rounded-md transition-colors" :class="selectedStreet && selectedStreet.id === street.id ? 'bg-sky-500 text-white' : 'text-slate-300 hover:bg-slate-700/50'">
+                        <a href="#" @click.prevent="selectStreet(street)" class="flex items-center flex-grow truncate">
+                            <i data-lucide="map-pinned" class="w-4 h-4 mr-3 flex-shrink-0"></i>
+                            <span class="truncate" x-text="street.name"></span>
+                        </a>
+                        <button @click="menuOpen = !menuOpen" class="p-1 -mr-1 rounded-full hover:bg-slate-600/50 flex-shrink-0">
+                            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <!-- Dropdown Menu -->
+                    <div x-show="menuOpen" @click.away="menuOpen = false" x-transition class="absolute right-0 top-10 z-20 w-36 origin-top-right bg-slate-900 border border-slate-700 rounded-md shadow-lg py-1">
+                        <a href="#" @click.prevent="openEditModal(street, 'street'); menuOpen = false" class="flex items-center w-full px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800">
+                            <i data-lucide="edit" class="w-4 h-4 mr-2"></i>Edit
+                        </a>
+                        <a href="#" @click.prevent="openDeleteModal(street, 'street'); menuOpen = false" class="flex items-center w-full px-3 py-1.5 text-sm text-red-400 hover:bg-slate-800">
+                            <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>Delete
+                        </a>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!isLoading && streets.length === 0">
+                <p class="p-2 text-xs text-center text-slate-500">No streets found. Add one to get started.</p>
+            </template>
+        </nav>
+    </aside>
+
+  <!-- Main Content -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+      <header class="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-sm border-b border-slate-800 sticky top-0 z-10 h-16 flex-shrink-0">
+          <div class="flex items-center space-x-4">
+              <button @click="isSidebarOpen = !isSidebarOpen" class="p-1 text-slate-400 hover:text-white">
+                  <i data-lucide="menu" class="w-6 h-6"></i>
+              </button>
+              <a href="#" class="flex items-center space-x-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-400"><path d="M12 12.5a3.5 3.5 0 0 0 0-5 3.5 3.5 0 0 0-3.5 3.5c0 1.25.64 2.33 1.58 2.94"/><path d="M17.5 10.5c0-1.25-.64-2.33-1.58-2.94a3.5 3.5 0 0 0-1.58 8.94"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                  <h1 class="text-xl font-bold text-white">Auralis</h1>
+              </a>
+          </div>
+          <div class="flex items-center space-x-4">
+               <div x-show="isLoading" class="flex items-center space-x-2">
+                   <div class="spinner w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full"></div>
+                   <span class="text-xs text-slate-400">Loading...</span>
+               </div>
+          </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto">
+        <div class="p-4 sm:p-6 lg:p-8 space-y-8">
+            <!-- Placeholder when no street is selected -->
+            <div x-show="!selectedStreet" class="flex flex-col items-center justify-center h-full text-center text-slate-500 min-h-[60vh]">
+                <i data-lucide="mouse-pointer-2" class="w-16 h-16 mb-4"></i>
+                <h2 class="text-xl font-semibold text-slate-400">Select a Street</h2>
+                <p class="max-w-md mt-2">Choose a street from the sidebar to view its lightposts, or add a new street to get started.</p>
+            </div>
+            
+            <!-- Lights Card (shown when a street is selected) -->
+            <div x-show="selectedStreet" x-cloak class="card rounded-lg overflow-hidden" x-data="{ isAdding: false }">
+                <div class="p-4 border-b border-slate-700">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                      <h2 class="text-lg font-semibold text-slate-100 flex items-center"><i data-lucide="lightbulb" class="w-5 h-5 mr-3 text-amber-400"></i>Manage Lights for <span class="ml-2 text-amber-400" x-text="selectedStreet?.name"></span></h2>
+                        <button @click="isAdding = !isAdding" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-amber-500 text-white shadow hover:bg-amber-500/90 h-8 px-3">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Add Light
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Light Form -->
+                 <div x-show="isAdding" class="p-4 border-b border-slate-700 bg-slate-900/50">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <input x-model="newLight.name" class="input text-sm rounded-md px-3 py-1.5" placeholder="Light name *">
+                        <input x-model.number="newLight.lat" class="input text-sm rounded-md px-3 py-1.5" placeholder="Latitude" type="number">
+                        <input x-model.number="newLight.lon" class="input text-sm rounded-md px-3 py-1.5" placeholder="Longitude" type="number">
+                        <input x-model="newLight.ip" class="input text-sm rounded-md px-3 py-1.5" placeholder="IP Address">
+                        <input x-model="newLight.voltage" class="input text-sm rounded-md px-3 py-1.5" placeholder="Voltage">
+                        <input x-model="newLight.current" class="input text-sm rounded-md px-3 py-1.5" placeholder="Current">
+                        <input x-model="newLight.power" class="input text-sm rounded-md px-3 py-1.5" placeholder="Power">
+                        <input x-model="newLight.energy" class="input text-sm rounded-md px-3 py-1.5" placeholder="Energy">
+                        <input x-model="newLight.location_src" class="input text-sm rounded-md px-3 py-1.5" placeholder="Location src">
+                        <input x-model="newLight.installation_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Installation date" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <input x-model="newLight.last_service_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Last service date" onfocus="(this.type='date')" onblur="(this.type='text')">
+                        <select x-model="newLight.fault_status" class="input text-sm rounded-md px-3 py-1.5 w-full">
+                            <option value="No Fault">No Fault</option>
+                            <option value="Active">Active</option>
+                            <option value="Under Investigation">Under Investigation</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                        <select x-model="newLight.fault_type" class="input text-sm rounded-md px-3 py-1.5 w-full">
+                            <option value="None">None</option>
+                            <option value="Control Module Failure">Control Module Failure</option>
+                            <option value="Luminaire Panel Fault">Luminaire Panel Fault</option>
+                            <option value="Network Connectivity Issue">Network Connectivity Issue</option>
+                            <option value="Power Supply Anomaly">Power Supply Anomaly</option>
+                        </select>
+                    </div>
+                     <div class="mt-4 flex justify-end">
+                         <button @click="addLight().then(() => isAdding = false)" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-sky-500 text-white shadow hover:bg-sky-500/90 h-8 px-3">
+                             Save New Light
+                         </button>
+                     </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="w-full text-sm text-left text-slate-400 table-fixed">
+                        <thead class="text-xs text-slate-300 uppercase bg-slate-800 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-3 w-[4%]">ID</th><th class="px-3 py-3 w-[7%]">Name</th>
+                                <th class="px-3 py-3 w-[6%]">Lat</th><th class="px-3 py-3 w-[6%]">Lon</th><th class="px-3 py-3 w-[7%]">IP</th>
+                                <th class="px-3 py-3 w-[4%]">V</th><th class="px-3 py-3 w-[4%]">I</th><th class="px-3 py-3 w-[4%]">P</th>
+                                <th class="px-3 py-3 w-[5%]">E</th><th class="px-3 py-3 w-[10%]">Location Src</th><th class="px-3 py-3 w-[8%]">Install</th>
+                                <th class="px-3 py-3 w-[8%]">Last Serv.</th><th class="px-3 py-3 w-[7%]">Fault</th><th class="px-3 py-3 w-[7%]">Fault Type</th><th class="px-3 py-3 w-[6%] text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700">
+                            <template x-for="light in filteredLights" :key="light.id">
+                                 <tr class="hover:bg-slate-700/50">
+                                    <td class="px-3 py-3 font-medium text-slate-300" x-text="light.id"></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.name || 'N/A'"></span><span class="tooltip-text" x-text="light.name || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lat || 'N/A'"></span><span class="tooltip-text" x-text="light.lat || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lon || 'N/A'"></span><span class="tooltip-text" x-text="light.lon || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.ip || 'N/A'"></span><span class="tooltip-text" x-text="light.ip || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.voltage || 'N/A'"></span><span class="tooltip-text" x-text="light.voltage || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.current || 'N/A'"></span><span class="tooltip-text" x-text="light.current || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.power || 'N/A'"></span><span class="tooltip-text" x-text="light.power || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.energy || 'N/A'"></span><span class="tooltip-text" x-text="light.energy || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.location_src || 'N/A'"></span><span class="tooltip-text" x-text="light.location_src || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.installation_date)"></span><span class="tooltip-text" x-text="formatDate(light.installation_date)"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.last_service_date)"></span><span class="tooltip-text" x-text="formatDate(light.last_service_date)"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_status || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_status || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_type || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_type || 'N/A'"></span></div></td>
+                                    <td class="px-3 py-3">
+                                        <div class="flex justify-end items-center gap-2">
+                                            <button @click="openEditModal(light, 'light')" class="p-1 text-slate-400 hover:text-sky-400"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                            <button @click="openDeleteModal(light, 'light')" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="!isLoading && filteredLights.length === 0">
+                                <tr><td colspan="15" class="text-center px-3 py-4 text-slate-500">No lights found for this street.</td></tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      </main>
+  </div>
+
+  <!-- Add Street Modal -->
+  <div x-show="isAddStreetModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div x-show="isAddStreetModalOpen" @click="isAddStreetModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+          <div x-show="isAddStreetModalOpen" x-transition class="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+              <h3 class="text-lg font-medium leading-6 text-white">Add New Street</h3>
+              <div class="mt-4 space-y-4">
+                  <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="newStreet.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="e.g., Main Street"></div>
+                  <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="newStreet.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="Enter map URL"></div>
+              </div>
+              <div class="mt-6 flex justify-end space-x-3">
+                  <button @click="isAddStreetModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                  <button @click="addStreet()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Street</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div x-show="isEditModalOpen" @click="isEditModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+          <div x-show="isEditModalOpen" x-transition class="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+              <h3 class="text-lg font-medium leading-6 text-white" x-text="`Edit ${editingType === 'street' ? 'Street' : 'Light'}`"></h3>
+              <div class="mt-4">
+                  <template x-if="editingType === 'street'">
+                      <div class="space-y-4">
+                          <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                          <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="editingItem.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                      </div>
+                  </template>
+                  <template x-if="editingType === 'light'">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-medium text-slate-300">Light Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Latitude</label><input type="number" x-model.number="editingItem.lat" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Longitude</label><input type="number" x-model.number="editingItem.lon" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">IP Address</label><input type="text" x-model="editingItem.ip" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Voltage</label><input type="text" x-model="editingItem.voltage" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Current</label><input type="text" x-model="editingItem.current" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Power</label><input type="text" x-model="editingItem.power" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Energy</label><input type="text" x-model="editingItem.energy" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Location Src</label><input type="text" x-model="editingItem.location_src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Installation Date</label><input type="date" x-model="editingItem.installation_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Last Service Date</label><input type="date" x-model="editingItem.last_service_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300">Fault Status</label>
+                                <select x-model="editingItem.fault_status" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                                   <option value="No Fault">No Fault</option>
+                                   <option value="Active">Active</option>
+                                   <option value="Under Investigation">Under Investigation</option>
+                                   <option value="Resolved">Resolved</option>
+                                </select>
+                            </div>
+                            <div>
+                               <label class="block text-sm font-medium text-slate-300">Fault Type</label>
+                               <select x-model="editingItem.fault_type" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                                   <option value="None">None</option>
+                                   <option value="Control Module Failure">Control Module Failure</option>
+                                   <option value="Luminaire Panel Fault">Luminaire Panel Fault</option>
+                                   <option value="Network Connectivity Issue">Network Connectivity Issue</option>
+                                   <option value="Power Supply Anomaly">Power Supply Anomaly</option>
+                               </select>
+                            </div>
+                        </div>
+                   </template>
+              </div>
+              <div class="mt-6 flex justify-end space-x-3">
+                  <button @click="isEditModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                  <button @click="saveChanges()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Changes</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div x-show="isDeleteModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div x-show="isDeleteModalOpen" @click="isDeleteModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+          <div x-show="isDeleteModalOpen" x-transition class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+              <h3 class="text-lg font-medium leading-6 text-white">Confirm Deletion</h3>
+              <div class="mt-2">
+                  <p class="text-sm text-slate-400">Are you sure you want to delete <strong x-text="itemToDelete.name"></strong>? This action cannot be undone.</p>
+              </div>
+              <div class="mt-6 flex justify-end space-x-3">
+                  <button @click="isDeleteModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                  <button @click="confirmDelete()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-500">Delete</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+<script>
+    // This is run when the DOM is ready and Alpine is initialized.
+    window.onload = () => {
+        lucide.createIcons();
+    };
+</script>
+
 </body>
 </html>

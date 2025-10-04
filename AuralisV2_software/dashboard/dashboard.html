@@ -3,133 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.85">
-    <title>Luma-Dashboard</title>
+    <title>Auralis Dashboard</title>
     <link rel="stylesheet" href="/dashboard/dashboard_static/dashboard_style.css">
-    <link rel="image/png" href="https://luma-dashboard.netlify.app/assets/images/logo.png">
     <link rel="icon" type="image/png" href="https://luma-dashboard.netlify.app/assets/images/logo.png">
 
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Luma">
-    <meta property="og:description" content="Luma - Your smart solution for street lighting by Lumen Labs.">
+    <meta property="og:title" content="Auralis">
+    <meta property="og:description" content="Auralis - Your smart solution for street lighting.">
     <meta property="og:image" content="https://luma-dashboard.netlify.app/assets/images/logo.png">
     <meta property="og:url" content="https://luma-dashboard.netlify.app/">
     <meta property="og:type" content="website">
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body id="main-window-body">
-        <div id="left-panel">
-            <div id="areaNameContainer">
-                <header id="areaNameSearch">
-                    <input type="text" id="areaNameInput" placeholder="Search Area Name">
-                </header>
-                <div id="areaNameList" class="listContainer">
-                    <h4 style="text-align: center; color: #F6F3ED;">Loading...</h4>
-                </div>
-            </div>
 
-            <div id="profile">
-                <div id="profilePicture">
-                    <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Profile Picture">
-                </div>
-                <p id="profileName">Tirtha</p>
+    <div id="left-panel">
+        <div id="streetNameContainer">
+            <header id="streetNameSearch">
+                <input type="text" id="streetNameInput" placeholder="Search Street Name">
+            </header>
+            <div id="streetNameList" class="listContainer">
+                <!-- Street list will be populated by JS -->
             </div>
-
         </div>
 
-        <div id="middle-panel">
-            <div id="mapContainer" class="middle-panel-cards">
-                <!-- <iframe id="map" src="/assets/images/map_load.gif" frameborder="0" allowfullscreen></iframe> -->
-                <div id="map"></div>
-                <!-- <div id="lpDetailsContainer"  style="display: none;">
-                    <div style="width: 50%; float: left;">
-                        <p>Light Post: <span id="lpNumber">--</span></p>
-                        <p>Area: <span id="areaName">--</span></p>
-                        <p>Volatge: <span id="voltage">--</span></p>
-                        <p>Current: <span id="current">--</span></p>
-                    </div>
-
-                    <div style="width: 50%; float: right;">
-                        <p>Power: <span id="power">--</span></p>
-                        <p>Energy: <span id="energy">--</span></p>
-                        <p>Installation Date: <span id="installationDate">--</span></p>
-                        <p>Last Service Date: <span id="lastServiceDate">--</span></p>
-                    </div>
-                </div> -->
+        <div id="profile">
+            <div id="profilePicture">
+                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Profile Picture">
             </div>
-            
-            
-            <div id="dateTimeContainer" class="middle-panel-cards">
+            <p id="profileName">Tirtha</p>
+        </div>
+    </div>
+
+    <div id="middle-panel">
+        <header id="main-header">
+            <h1 id="header-title">AuralisView</h1>
+            <div id="header-datetime">
                 <p id="timeText">--:--:--</p>
-                <p id="ampmText">--</p>
                 <p id="dateText">---,--- --</p>
             </div>
-
-            <div id="totalEnergyConsumptionConatiner" class="middle-panel-cards">
-                <div class="backCircle"></div>
-                <div class="progressBar" id="energyConsumptionBar"></div>
-                <div class="frontCircle"></div>
-                <h2 class="gauge-text" >
-                    <span class="gauge-value" id="totalEnergyConsumptionText" style="color: red;">--</span>kWh
-                </h2>
-                <p style="color: #a7a7a7; position:relative;">Energy Consumed</p>
-            </div>
-            <div id="cctvContainer" class="middle-panel-cards">CCTV CONTROL</div>
-            <div id="solarDetailsContainer" class="middle-panel-cards">SOLAR DETAILS</div>
-            <div id="totalEnergySavedContainer" class="middle-panel-cards">
-                <div class="backCircle"></div>
-                <div class="progressBar" id="energySavedBar"></div>
-                <div class="frontCircle"></div>
-                <h2 class="gauge-text" >
-                    <span class="gauge-value" id="totalEnergySavedText" style="color: green;">--</span>kWh
-                </h2>
-                <p style="color: #a7a7a7; position:relative;">Energy Saved</p>
-            </div>
+        </header>
+        
+        <div id="mapContainer" class="middle-panel-cards">
+            <div id="map"></div>
         </div>
 
-        <div id="right-panel">
-            <div id="LightPostContainer">
+        <div id="totalEnergyConsumptionConatiner" class="gauge-card middle-panel-cards">
+             <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
+                    <circle class="gauge-value-bar" id="energyConsumptionBar" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="gauge-text-content">
+                    <span class="gauge-value" id="totalEnergyConsumptionText">--</span>
+                    <span class="gauge-label">Energy Consumed</span>
+                </div>
+            </div>
+        </div>
+        <div id="totalEnergySavedContainer" class="gauge-card middle-panel-cards">
+            <div class="gauge-container">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
+                    <circle class="gauge-value-bar" id="energySavedBar" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="gauge-text-content">
+                    <span class="gauge-value" id="totalEnergySavedText">--</span>
+                    <span class="gauge-label">Energy Saved</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="street-details-panel" class="middle-panel-cards">
+             <h2 id="details-header">Details</h2>
+             <div id="details-content">
+                <p>Select a street or light post to view details.</p>
+             </div>
+        </div>
+    </div>
 
-                <div id="allLightsContainer">
+    <div id="right-panel">
+        <!-- NEW Professional Tabbed Interface -->
+        <div id="light-post-manager">
+            <nav id="tabs-nav">
+                <button id="all-lights-tab" class="tab-button active">All Lights</button>
+                <button id="faulty-lights-tab" class="tab-button">Faulty</button>
+            </nav>
+
+            <div id="tabs-content">
+                <!-- All Lights Panel -->
+                <div id="allLightsContainer" class="tab-panel active">
                     <header id="lightNameSearch" class="lightNameSearch">
-                        <input type="text" id="lightNameInput" class ="lightNameInput" placeholder="Search Light Post Number">
+                        <input type="text" id="lightNameInput" class="lightNameInput" placeholder="Search Light Post Number">
                     </header>
                     <div id="lightNameList" class="listContainer">
-                        <h4 style="text-align: center; color: #F6F3ED;">Loading...</h4>
+                        <!-- All lights list populated by JS -->
                     </div>
                 </div>
 
-                <div id="faultyLightsContainer" style="display: none;">
+                <!-- Faulty Lights Panel -->
+                <div id="faultyLightsContainer" class="tab-panel">
                     <button id="faultySearchBtn" class="button">
-                        <span class="one">Fault Search</span>
-                        <img class="two" src="/assets/images/radar.gif" alt="faulty" width="35px" height="35px">
+                        <span class="one">Search for Faults</span>
+                        <img class="two" src="/assets/images/radar.gif" alt="Searching..." width="35px" height="35px">
                     </button>
-                    
                     <header id="faultyLightNameSearch" class="lightNameSearch">
-                        <input type="text" id="faultyLightNameInput" class ="lightNameInput" placeholder="Search Faulty Light Post Number">
+                        <input type="text" id="faultyLightNameInput" class="lightNameInput" placeholder="Search Faulty Lights">
                     </header>
                     <div id="faultyLightNameList" class="listContainer">
-                        <h4 style="text-align: center; color: #F6F3ED;">Loading...</h4>
+                        <!-- Faulty lights list populated by JS -->
                     </div>
                 </div>
-
-            </div>
-
-            <div id="accessPanel">
-                    <label class="radio">
-                        <input type="radio" name="radio" checked="">
-                        <img class="name" src="/assets/images/lights.png" alt="lights" width="40px" height="40px">
-                    </label>
-        
-                    <label class="radio">
-                        <input type="radio" name="radio">
-                        <img class="name" src="/assets/images/faulty.png" alt="faulty" width="40px" height="40px">
-                    </label>
             </div>
         </div>
+    </div>
+
+    <!-- Hidden SVG Definitions for Gradients -->
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <linearGradient id="gradientRed" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#FF5F6D;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#FFC371;stop-opacity:1" />
+        </linearGradient>
+        <linearGradient id="gradientGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#2AF598;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#009EFD;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+    </svg>
+
 </body>
 <script src="/dashboard/dashboard_static/dashboard_script.js"></script>
 </html>
+
