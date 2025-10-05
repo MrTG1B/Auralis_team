@@ -36,27 +36,6 @@
     }
 }
 
-/* --- NEW KEYFRAMES FOR SCANNER --- */
-@keyframes radar-sweep {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(0.1);
-        opacity: 0;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(1.2);
-        opacity: 0;
-    }
-}
-
-
 #main-window-body{
     font-family: 'Raleway', sans-serif;
     background-color: #121313;
@@ -392,13 +371,15 @@
 }
 
 #street-details-panel {
-    grid-column: 1 / -1; 
-    grid-row: 4; /* Place in the new fixed-height row */
+    grid-column: 1 / -1;
+    grid-row: 4;
     opacity: 0;
     animation: slideUp 0.5s ease-out 0.6s forwards;
     display: flex;
     flex-direction: column;
-    height: 100%; /* Ensure it fills its grid area */
+    height: 100%;
+    padding: 20px; /* Added inner padding */
+    box-sizing: border-box; /* Ensures padding is calculated correctly */
 }
 
 #details-header {
@@ -459,7 +440,7 @@
 
 .middle-panel-cards{
     background-color: #000000;
-    border-radius: 5px;
+    border-radius: 10px; /* Increased for a more modern look */
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     color:white;
     overflow: hidden;
@@ -579,108 +560,89 @@
     transition: opacity 0.1s ease-out;
 }
 
-/* === REMOVED OLD BUTTON STYLES === */
+/* --- CORRECTED & FINAL PREMIUM FAULT SCAN BUTTON --- */
+@keyframes radar-scan {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
-/* === NEW PREMIUM FAULT SCAN BUTTON === */
-.fault-scan-button {
+@keyframes pulse-target {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+#faulty-lights-panel .fault-scan-button {
     width: 100%;
-    height: 50px;
     background-color: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
+    border: 1px solid #2a2a2a;
     color: #e0e0e0;
-    font-size: 15px;
+    border-radius: 8px;
+    padding: 20px;
+    font-size: 14px;
     font-weight: 600;
-    cursor: pointer;
     display: flex;
-    justify-content: center;
+    /* This is the key change for the stacked layout */
+    flex-direction: column; 
     align-items: center;
-    position: relative;
+    justify-content: center;
+    gap: 15px; /* Increased gap for spacing */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    outline: none;
+    position: relative; 
     overflow: hidden;
-    transition: all 0.3s ease;
 }
 
-.fault-scan-button:hover:not(:disabled) {
-    background-color: #222;
-    border-color: #CA4C49;
-    color: #fff;
+#faulty-lights-panel .fault-scan-button:hover:not(:disabled) {
+    background-color: #252525;
+    border-color: #444;
 }
 
-.fault-scan-button:disabled {
+#faulty-lights-panel .fault-scan-button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
 
-.button-content-wrapper {
+.scan-icon-container {
+    /* Increased size for a more prominent icon */
+    width: 60px; 
+    height: 60px;
+    position: relative;
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 10px;
-    transition: opacity 0.3s ease;
 }
 
-.scan-icon {
-    width: 24px;
-    height: 24px;
+.scan-icon-container .icon-target,
+.scan-icon-container .icon-scanner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+}
+
+.scan-icon-container .icon-target {
+    stroke: #a7a7a7;
     transition: all 0.3s ease;
 }
 
-.scan-icon .radar-circle, .scan-icon .radar-line {
-    stroke: #a7a7a7;
-    transition: stroke 0.3s ease;
+.fault-scan-button:hover:not(:disabled) .icon-target {
+    stroke: #fff;
 }
-.fault-scan-button:hover .scan-icon .radar-circle,
-.fault-scan-button:hover .scan-icon .radar-line {
+
+.scan-icon-container .icon-scanner {
     stroke: #CA4C49;
+    opacity: 0; /* Hidden by default */
+    animation: radar-scan 1.5s linear infinite;
 }
 
-.scan-icon .scanner-sweep {
-    stroke: none;
-    fill: #CA4C49;
-    fill-opacity: 0.4;
-    transform-origin: 12px 12px;
-    display: none; /* Hidden by default */
+/* When the button has the 'scanning' class, activate animations */
+.fault-scan-button.scanning .icon-scanner {
+    opacity: 1;
 }
 
-
-/* --- SCANNING STATE --- */
-.fault-scan-button.scanning {
-    border-color: #CA4C49;
-    color: #CA4C49;
-}
-
-.fault-scan-button.scanning .button-text {
-    animation: fadeIn 0.5s forwards;
-}
-
-.fault-scan-button.scanning .scan-icon .scanner-sweep {
-    display: block; /* Visible during scan */
-}
-
-.fault-scan-button.scanning .scan-icon .radar-circle,
-.fault-scan-button.scanning .scan-icon .radar-line {
-    stroke: #CA4C49;
-}
-
-.scanner-animation {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    border-radius: 8px;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-
-.fault-scan-button.scanning .scanner-animation::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: inherit;
-    background-color: #CA4C49;
-    animation: pulse 1.5s ease-out infinite;
+.fault-scan-button.scanning .icon-target {
+    animation: pulse-target 1.5s ease-in-out infinite;
+    stroke: #e74c3c; /* Change target color during scan */
 }
 

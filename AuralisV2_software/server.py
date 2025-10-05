@@ -51,7 +51,7 @@ def get_street_data(street_name):
             SELECT 
                 lp.id, lp.name, lp.lat, lp.lon, lp.fault_status, lp.voltage, lp.current, 
                 lp.power, lp.energy, lp.installation_date, lp.last_service_date, lp.fault_type,
-                lp.location_src, lp.ip
+                lp.location_src, lp.ip, lp.on_time, lp.off_time
             FROM light_posts lp
             WHERE lp.street_name_id=%s
             ORDER BY LENGTH(lp.name), lp.name ASC
@@ -59,6 +59,13 @@ def get_street_data(street_name):
             (street_name_id,)
         )
         lights = cur.fetchall()
+        # Convert time objects to strings for JSON serialization
+        for light in lights:
+            if isinstance(light.get('on_time'), datetime.timedelta):
+                light['on_time'] = str(light['on_time'])
+            if isinstance(light.get('off_time'), datetime.timedelta):
+                light['off_time'] = str(light['off_time'])
+
         cur.close()
         conn.close()
         return lights
@@ -142,6 +149,7 @@ def init_db_schema():
                 voltage VARCHAR(64) NULL, current VARCHAR(64) NULL, power VARCHAR(64) NULL,
                 energy VARCHAR(64) NULL, installation_date VARCHAR(64) NULL, last_service_date VARCHAR(64) NULL,
                 fault_status VARCHAR(64) NULL, fault_type VARCHAR(64) NULL,
+                on_time TIME NULL, off_time TIME NULL,
                 CONSTRAINT uq_light UNIQUE (name, street_name_id),
                 CONSTRAINT fk_light_street FOREIGN KEY (street_name_id) REFERENCES street_names(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""")
@@ -199,12 +207,19 @@ def list_lights():
         cur.execute("""
             SELECT lp.id, lp.name, sn.name AS street_name, lp.lat, lp.lon, lp.location_src, lp.ip, 
                    lp.voltage, lp.current, lp.power, lp.energy, lp.installation_date, 
-                   lp.last_service_date, lp.fault_status, lp.fault_type
+                   lp.last_service_date, lp.fault_status, lp.fault_type, lp.on_time, lp.off_time
             FROM light_posts lp
             JOIN street_names sn ON sn.id = lp.street_name_id
             ORDER BY sn.name, LENGTH(lp.name), lp.name ASC
             """)
         rows = cur.fetchall()
+        # Convert time objects to strings for JSON serialization
+        for row in rows:
+            if isinstance(row.get('on_time'), datetime.timedelta):
+                row['on_time'] = str(row['on_time'])
+            if isinstance(row.get('off_time'), datetime.timedelta):
+                row['off_time'] = str(row['off_time'])
+
         cur.close(); conn.close()
         return jsonify(rows)
     except Exception as e:
@@ -304,12 +319,12 @@ def create_light():
             return jsonify({"error": "Street not found"}), 404
         street_name_id = row[0]
         
-        sql = """INSERT INTO light_posts (name, street_name_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status, fault_type)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                 ON DUPLICATE KEY UPDATE location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage), current=VALUES(current), power=VALUES(power), energy=VALUES(energy), installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date), fault_status=VALUES(fault_status), fault_type=VALUES(fault_type)"""
+        sql = """INSERT INTO light_posts (name, street_name_id, location_src, lat, lon, ip, voltage, current, power, energy, installation_date, last_service_date, fault_status, fault_type, on_time, off_time)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 ON DUPLICATE KEY UPDATE location_src=VALUES(location_src), lat=VALUES(lat), lon=VALUES(lon), ip=VALUES(ip), voltage=VALUES(voltage), current=VALUES(current), power=VALUES(power), energy=VALUES(energy), installation_date=VALUES(installation_date), last_service_date=VALUES(last_service_date), fault_status=VALUES(fault_status), fault_type=VALUES(fault_type), on_time=VALUES(on_time), off_time=VALUES(off_time)"""
         
         lat, lon = payload.get('lat'), payload.get('lon') 
-        params = (payload.get('name'), street_name_id, payload.get('location_src'), lat, lon, payload.get('ip'), payload.get('voltage'), payload.get('current'), payload.get('power'), payload.get('energy'), payload.get('installation_date'), payload.get('last_service_date'), payload.get('fault_status'), payload.get('fault_type'))
+        params = (payload.get('name'), street_name_id, payload.get('location_src'), lat, lon, payload.get('ip'), payload.get('voltage'), payload.get('current'), payload.get('power'), payload.get('energy'), payload.get('installation_date'), payload.get('last_service_date'), payload.get('fault_status'), payload.get('fault_type'), payload.get('on_time'), payload.get('off_time'))
         cur.execute(sql, params)
         cur.close(); conn.close()
         push_street_update(street_name)
@@ -342,7 +357,7 @@ def patch_light(light_id):
         result = cur.fetchone()
         if result: street_name_to_notify = result[0]
         
-        allowed = ["name","location_src","lat","lon","ip","voltage","current","power","energy","installation_date","last_service_date","fault_status", "fault_type"]
+        allowed = ["name","location_src","lat","lon","ip","voltage","current","power","energy","installation_date","last_service_date","fault_status", "fault_type", "on_time", "off_time"]
         updates, vals = [], []
         for key in allowed:
             if key in payload:

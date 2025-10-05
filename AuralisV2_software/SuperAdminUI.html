@@ -139,7 +139,16 @@
                     <!-- Add Light Form -->
                      <div x-show="isAdding" class="p-4 border-b border-slate-700 bg-slate-900/50">
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <!-- **UPDATE:** Added on_time and off_time fields -->
                             <input x-model="newLight.name" class="input text-sm rounded-md px-3 py-1.5" placeholder="Light name *">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">On Time</label>
+                                <input x-model="newLight.on_time" type="time" class="input text-sm rounded-md px-3 py-1.5 w-full">
+                            </div>
+                             <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Off Time</label>
+                                <input x-model="newLight.off_time" type="time" class="input text-sm rounded-md px-3 py-1.5 w-full">
+                            </div>
                             <input x-model.number="newLight.lat" class="input text-sm rounded-md px-3 py-1.5" placeholder="Latitude" type="number">
                             <input x-model.number="newLight.lon" class="input text-sm rounded-md px-3 py-1.5" placeholder="Longitude" type="number">
                             <input x-model="newLight.ip" class="input text-sm rounded-md px-3 py-1.5" placeholder="IP Address">
@@ -173,19 +182,24 @@
                     <div class="table-container">
                         <table class="w-full text-sm text-left text-slate-400 table-fixed">
                             <thead class="text-xs text-slate-300 uppercase bg-slate-800 sticky top-0">
+                                <!-- **UPDATE:** Added On/Off Time columns and adjusted widths -->
                                 <tr>
                                     <th class="px-3 py-3 w-[4%]">ID</th><th class="px-3 py-3 w-[7%]">Name</th>
-                                    <th class="px-3 py-3 w-[6%]">Lat</th><th class="px-3 py-3 w-[6%]">Lon</th><th class="px-3 py-3 w-[7%]">IP</th>
+                                    <th class="px-3 py-3 w-[5%]">On Time</th><th class="px-3 py-3 w-[5%]">Off Time</th>
+                                    <th class="px-3 py-3 w-[5%]">Lat</th><th class="px-3 py-3 w-[5%]">Lon</th><th class="px-3 py-3 w-[7%]">IP</th>
                                     <th class="px-3 py-3 w-[4%]">V</th><th class="px-3 py-3 w-[4%]">I</th><th class="px-3 py-3 w-[4%]">P</th>
-                                    <th class="px-3 py-3 w-[5%]">E</th><th class="px-3 py-3 w-[10%]">Location Src</th><th class="px-3 py-3 w-[8%]">Install</th>
-                                    <th class="px-3 py-3 w-[8%]">Last Serv.</th><th class="px-3 py-3 w-[7%]">Status</th><th class="px-3 py-3 w-[7%]">Fault Type</th><th class="px-3 py-3 w-[6%] text-right">Actions</th>
+                                    <th class="px-3 py-3 w-[5%]">E</th><th class="px-3 py-3 w-[8%]">Install</th>
+                                    <th class="px-3 py-3 w-[8%]">Last Serv.</th><th class="px-3 py-3 w-[7%]">Status</th><th class="px-3 py-3 w-[6%]">Fault</th><th class="px-3 py-3 w-[6%] text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-700">
                                 <template x-for="light in filteredLights" :key="light.id">
                                      <tr class="hover:bg-slate-700/50">
+                                         <!-- **UPDATE:** Added cells for on_time and off_time -->
                                          <td class="px-3 py-3 font-medium text-slate-300" x-text="light.id"></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.name || 'N/A'"></span><span class="tooltip-text" x-text="light.name || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.on_time || 'N/A'"></span><span class="tooltip-text" x-text="light.on_time || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.off_time || 'N/A'"></span><span class="tooltip-text" x-text="light.off_time || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lat || 'N/A'"></span><span class="tooltip-text" x-text="light.lat || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lon || 'N/A'"></span><span class="tooltip-text" x-text="light.lon || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.ip || 'N/A'"></span><span class="tooltip-text" x-text="light.ip || 'N/A'"></span></div></td>
@@ -193,7 +207,6 @@
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.current || 'N/A'"></span><span class="tooltip-text" x-text="light.current || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.power || 'N/A'"></span><span class="tooltip-text" x-text="light.power || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.energy || 'N/A'"></span><span class="tooltip-text" x-text="light.energy || 'N/A'"></span></div></td>
-                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.location_src || 'N/A'"></span><span class="tooltip-text" x-text="light.location_src || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.installation_date) || 'N/A'"></span><span class="tooltip-text" x-text="formatDate(light.installation_date) || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.last_service_date) || 'N/A'"></span><span class="tooltip-text" x-text="formatDate(light.last_service_date) || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_status || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_status || 'N/A'"></span></div></td>
@@ -207,7 +220,7 @@
                                      </tr>
                                 </template>
                                 <template x-if="!isLoading && filteredLights.length === 0">
-                                    <tr><td colspan="15" class="text-center px-3 py-4 text-slate-500">No lights found for this street.</td></tr>
+                                    <tr><td colspan="17" class="text-center px-3 py-4 text-slate-500">No lights found for this street.</td></tr>
                                 </template>
                             </tbody>
                         </table>
@@ -251,8 +264,17 @@
                         </div>
                     </template>
                     <template x-if="editingType === 'light'">
+                         <!-- **UPDATE:** Added on_time and off_time fields to Edit modal -->
                          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                              <div><label class="block text-sm font-medium text-slate-300">Light Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div>
+                                <label class="block text-sm font-medium text-slate-300">On Time</label>
+                                <input type="time" x-model="editingItem.on_time" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300">Off Time</label>
+                                <input type="time" x-model="editingItem.off_time" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                            </div>
                              <div><label class="block text-sm font-medium text-slate-300">Latitude</label><input type="number" x-model="editingItem.lat" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
                              <div><label class="block text-sm font-medium text-slate-300">Longitude</label><input type="number" x-model="editingItem.lon" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
                              <div><label class="block text-sm font-medium text-slate-300">IP Address</label><input type="text" x-model="editingItem.ip" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
@@ -341,7 +363,7 @@
     const formatDate = (dateString) => {
         if (!dateString) return null;
         const date = new Date(dateString);
-        if (isNaN(date)) return dateString; // Return original if invalid
+        if (isNaN(date)) return dateString;
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -367,12 +389,12 @@
             itemToDelete: {},
             deleteType: null,
             newStreet: { name: '', src: '' },
-            newLight: { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None' },
+            // **UPDATE:** Added on_time and off_time to the default newLight object.
+            newLight: { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None', on_time: '', off_time: '' },
             
             // Computed
             get filteredLights() {
                 if (!this.selectedStreet) return [];
-                // Filter all lights by the selected street's name. The 'street_name' property is added during the initial load.
                 return this.lights.filter(light => light.street_name === this.selectedStreet.name);
             },
 
@@ -391,7 +413,6 @@
                     }
                 });
 
-                // This ensures icons are rendered after Alpine has finished its DOM updates.
                 this.$watch('filteredLights', () => this.$nextTick(() => lucide.createIcons()));
             },
             
@@ -418,13 +439,11 @@
             async loadInitialData() {
                 this.isLoading = true;
                 try {
-                    // Fetch all data at once for a responsive UI
                     const [streetsData, lightsData] = await Promise.all([
                         fetchJSON('/admin/streets'), 
                         fetchJSON('/admin/lights')
                     ]);
                     this.streets = streetsData;
-                    // The lights data comes with 'street_name', so no mapping is needed.
                     this.lights = lightsData;
                 } catch (e) {
                     showToast(`Initial load failed: ${e.message || e}`, 'err');
@@ -441,11 +460,9 @@
             },
             
             handleRealTimeLightUpdate(updatedLights) {
-                // This is more efficient than a full reload. 
-                // It replaces only the lights for the affected street.
-                const updatedStreetName = updatedLights.length > 0 ? this.streets.find(s => s.id === updatedLights[0].street_name_id)?.name : this.selectedStreet?.name;
+                if (!this.selectedStreet) return;
                 
-                // Remove all old lights for this street
+                // Remove all old lights for the currently selected street
                 this.lights = this.lights.filter(light => light.street_name !== this.selectedStreet.name);
 
                 // Add the new lights, ensuring they have the street_name property for filtering
@@ -467,7 +484,6 @@
 
             openEditModal(item, type) {
                 this.editingItem = JSON.parse(JSON.stringify(item));
-                // Add the 'area' property for consistency if it's a light
                 if(type === 'light') {
                     this.editingItem.area = item.street_name;
                 }
@@ -488,27 +504,22 @@
                         body: JSON.stringify(data)
                     });
                     showToast('Street updated successfully');
-                    // Real-time update will be handled by the server broadcast
                 } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
             },
             
             async saveLight(id, data) {
                 try {
                     const payload = { ...data };
-                    // Server expects 'street_name', not 'area'
                     if (payload.area) {
                         payload.street_name = payload.area;
                         delete payload.area;
                     }
-                    if (payload.lat) payload.lat = parseFloat(payload.lat);
-                    if (payload.lon) payload.lon = parseFloat(payload.lon);
                     
                     await fetchJSON(`/admin/light/${id}`, {
                         method: 'PATCH', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(payload)
                     });
                     showToast('Light updated successfully');
-                     // Real-time update will be handled by the server push
                 } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
             },
             
@@ -531,7 +542,6 @@
                     if (this.selectedStreet && this.selectedStreet.id === id) {
                         this.selectedStreet = null;
                     }
-                    // Real-time update will handle UI changes
                 } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
             },
 
@@ -539,7 +549,6 @@
                 try {
                     await fetchJSON(`/admin/light/${id}`, { method: 'DELETE' });
                     showToast('Light deleted');
-                    // Real-time update will handle UI changes
                 } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
             },
 
@@ -553,7 +562,6 @@
                     this.newStreet = { name: '', src: '' };
                     showToast('Street added successfully');
                     this.isAddStreetModalOpen = false;
-                    // Real-time update will handle UI changes
                 } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
             },
 
@@ -565,9 +573,8 @@
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(payload)
                     });
-                    this.newLight = { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None' };
+                    this.newLight = { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None', on_time: '', off_time: '' };
                     showToast('Light added successfully');
-                    // Real-time update will handle UI changes
                 } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
             }
         }));
