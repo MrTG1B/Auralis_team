@@ -1,313 +1,56 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Auralis Super Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FIX: Added 'defer' to the Alpine.js script tag -->
-  <!-- This ensures Alpine.js waits for the full page to be ready before it runs, preventing initialization errors. -->
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #0f172a; /* slate-900 */
-      color: #cbd5e1; /* slate-300 */
-    }
-    .card {
-        background-color: #1e293b; /* slate-800 */
-        border: 1px solid #334155; /* slate-700 */
-    }
-    .table-container {
-        border-radius: 0.5rem;
-        overflow-x: auto;
-    }
-    .table-container::-webkit-scrollbar { height: 8px; }
-    .table-container::-webkit-scrollbar-track { background: #1e293b; }
-    .table-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-    .table-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
-    
-    .input {
-        background-color: #334155;
-        border: 1px solid #475569;
-        color: #f1f5f9;
-    }
-    .input:focus {
-        border-color: #38bdf8;
-        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
-    }
-    .toast { 
-        display: none; 
-        position: fixed; 
-        top: 1.5rem; 
-        right: 1.5rem; 
-        z-index: 100;
-        opacity: 0;
-        transform: translateX(100%);
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-    }
-    .toast.show {
-        opacity: 1;
-        transform: translateX(0);
-    }
-    
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { animation: spin 1s linear infinite; }
-    
-    [x-cloak] { display: none !important; }
-
-    .tooltip { position: relative; display: inline-block; max-width: 100%; }
-    .tooltip .tooltip-text {
-        visibility: hidden;
-        width: max-content;
-        max-width: 300px;
-        background-color: #0f172a;
-        color: #fff;
-        text-align: center;
-        border-radius: 6px;
-        padding: 5px 10px;
-        position: absolute;
-        z-index: 10;
-        bottom: 125%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.3s;
-        border: 1px solid #334155;
-        word-wrap: break-word;
-    }
-    .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
-  </style>
-  <script>
-    const fetchJSON = async (url, opts = {}) => {
-        const r = await fetch(url, { cache: 'no-store', ...opts });
-        if (!r.ok) {
-            const t = await r.text();
-            throw new Error(t || `HTTP ${r.status}`);
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auralis Super Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #cbd5e1; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        .table-container { border-radius: 0.5rem; overflow-x: auto; }
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #1e293b; }
+        .table-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .table-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .input, .select { background-color: #334155; border: 1px solid #475569; color: #f1f5f9; }
+        .input:focus, .select:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+        .toast {
+            display: none; position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100;
+            transform: translateX(100%); opacity: 0;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
         }
-        const ct = r.headers.get('content-type') || '';
-        return ct.includes('application/json') ? r.json() : r.text();
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-            return dateString; // Return original string if date is not valid
+        .toast.show { transform: translateX(0); opacity: 1; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+        [x-cloak] { display: none !important; }
+        .tooltip { position: relative; display: inline-block; max-width: 100%; }
+        .tooltip .tooltip-text {
+            visibility: hidden; width: max-content; max-width: 300px;
+            background-color: #0f172a; color: #fff; text-align: center;
+            border-radius: 6px; padding: 5px 10px; position: absolute;
+            z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%);
+            opacity: 0; transition: opacity 0.3s; border: 1px solid #334155;
+            word-wrap: break-word;
         }
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-    };
-
-    const showToast = (msg, type = 'ok') => {
-        const toastEl = document.getElementById('toast');
-        const iconEl = document.getElementById('toast-icon');
-        const messageEl = document.getElementById('toast-message');
-        const icons = {
-            ok: `<div class="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200"><svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/></svg></div>`,
-            err: `<div class="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200"><svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/></svg></div>`
-        };
-        iconEl.innerHTML = icons[type] || icons['ok'];
-        messageEl.textContent = msg;
-        
-        toastEl.style.display = 'flex';
-        setTimeout(() => {
-            toastEl.classList.add('show');
-        }, 10);
-
-        setTimeout(() => {
-            toastEl.classList.remove('show');
-            setTimeout(() => {
-                toastEl.style.display = 'none';
-            }, 300);
-        }, 3000);
-    };
-
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('adminDashboard', () => ({
-            // State
-            streets: [],
-            lights: [],
-            isLoading: false,
-            isSidebarOpen: true,
-            selectedStreet: null,
-
-            isEditModalOpen: false,
-            isDeleteModalOpen: false,
-            isAddStreetModalOpen: false,
-
-            editingItem: {},
-            editingType: null,
-            itemToDelete: {},
-            deleteType: null,
-            newStreet: { name: '', src: '' },
-            newLight: {
-                area: '', name: '', lat: null, lon: null, ip: '', voltage: '',
-                current: '', power: '', energy: '', location_src: '',
-                installation_date: '', last_service_date: '', fault_status: 'No Fault', fault_type: 'None'
-            },
-            
-            // Computed
-            get filteredLights() {
-                if (!this.selectedStreet) return [];
-                return this.lights.filter(light => light.area === this.selectedStreet.name);
-            },
-
-            // Init
-            init() {
-                this.load();
-                this.$watch('streets', () => this.$nextTick(() => lucide.createIcons()));
-                this.$watch('lights', () => this.$nextTick(() => lucide.createIcons()));
-                this.$watch('selectedStreet', () => this.$nextTick(() => lucide.createIcons()));
-            },
-            
-            // Methods
-            async load() {
-                this.isLoading = true;
-                try {
-                    const [streetsData, lightsData] = await Promise.all([fetchJSON('/admin/streets'), fetchJSON('/admin/lights')]);
-                    this.streets = streetsData;
-                    // FIX: Normalize lights data to ensure 'area' property exists for frontend logic
-                    this.lights = lightsData.map(light => {
-                        if (light.street_name) {
-                            light.area = light.street_name;
-                        }
-                        return light;
-                    });
-                } catch (e) {
-                    showToast(`Load failed: ${e.message || e}`, 'err');
-                } finally {
-                    this.isLoading = false;
-                }
-            },
-
-            selectStreet(street) {
-                this.selectedStreet = street;
-                this.newLight.area = street.name;
-            },
-
-            openEditModal(item, type) {
-                this.editingItem = JSON.parse(JSON.stringify(item));
-                this.editingType = type;
-                this.isEditModalOpen = true;
-            },
-            
-            async saveChanges() {
-                const saveFunction = this.editingType === 'street' ? this.saveStreet.bind(this) : this.saveLight.bind(this);
-                await saveFunction(this.editingItem.id, this.editingItem);
-                this.isEditModalOpen = false;
-            },
-            
-            async saveStreet(id, data) {
-                try {
-                    await fetchJSON(`/admin/street/${id}`, {
-                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(data)
-                    });
-                    showToast('Street updated successfully');
-                    await this.load();
-                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
-            },
-            
-            async saveLight(id, data) {
-                try {
-                    const payload = { ...data };
-                    if (payload.area) {
-                        payload.street_name = payload.area;
-                        delete payload.area;
-                    }
-                    if (payload.lat) payload.lat = parseFloat(payload.lat);
-                    if (payload.lon) payload.lon = parseFloat(payload.lon);
-                    await fetchJSON(`/admin/light/${id}`, {
-                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
-                    showToast('Light updated successfully');
-                    await this.load();
-                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
-            },
-            
-            openDeleteModal(item, type) {
-                this.itemToDelete = item;
-                this.deleteType = type;
-                this.isDeleteModalOpen = true;
-            },
-
-            async confirmDelete() {
-                const deleteFunction = this.deleteType === 'street' ? this.delStreet.bind(this) : this.delLight.bind(this);
-                await deleteFunction(this.itemToDelete.id);
-                this.isDeleteModalOpen = false;
-            },
-
-            async delStreet(id) {
-                try {
-                    await fetchJSON(`/admin/street/${id}`, { method: 'DELETE' });
-                    showToast('Street deleted');
-                    if (this.selectedStreet && this.selectedStreet.id === id) {
-                        this.selectedStreet = null;
-                    }
-                    await this.load();
-                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
-            },
-
-            async delLight(id) {
-                try {
-                    await fetchJSON(`/admin/light/${id}`, { method: 'DELETE' });
-                    showToast('Light deleted');
-                    await this.load();
-                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
-            },
-
-            async addStreet() {
-                if (!this.newStreet.name) return showToast('Street name is required.', 'err');
-                try {
-                    await fetchJSON('/admin/street', {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(this.newStreet)
-                    });
-                    this.newStreet = { name: '', src: '' };
-                    showToast('Street added successfully');
-                    this.isAddStreetModalOpen = false;
-                    await this.load();
-                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
-            },
-
-            async addLight() {
-                if (!this.newLight.area || !this.newLight.name) return showToast('Street and Light Name are required.', 'err');
-                try {
-                    const payload = { ...this.newLight };
-                    if (payload.area) {
-                        payload.street_name = payload.area;
-                        delete payload.area;
-                    }
-                    await fetchJSON('/admin/light', {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
-                    this.newLight = { area: this.selectedStreet.name, name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'No Fault', fault_type: 'None' };
-                    showToast('Light added successfully');
-                    await this.load();
-                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
-            }
-        }));
-    });
-  </script>
+        .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+    </style>
 </head>
 <body x-data="adminDashboard" class="flex h-screen overflow-hidden">
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast flex items-center w-full max-w-xs p-3 space-x-3 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800" role="alert">
-    <div id="toast-icon"></div>
-    <div id="toast-message" class="text-sm font-normal"></div>
-  </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast flex items-center w-full max-w-xs p-3 space-x-3 text-gray-400 bg-slate-800 rounded-lg shadow border border-slate-700" role="alert">
+        <div id="toast-icon"></div>
+        <div id="toast-message" class="text-sm font-normal text-slate-300"></div>
+    </div>
 
-  <!-- Sidebar -->
+    <!-- Sidebar -->
     <aside
         class="flex flex-col bg-slate-800 border-r border-slate-700 transition-all duration-300 ease-in-out"
         :class="isSidebarOpen ? 'w-64' : 'w-0 opacity-0'"
@@ -348,229 +91,488 @@
                 </div>
             </template>
             <template x-if="!isLoading && streets.length === 0">
-                <p class="p-2 text-xs text-center text-slate-500">No streets found. Add one to get started.</p>
+                <p class="p-2 text-xs text-center text-slate-500">No streets found.</p>
             </template>
         </nav>
     </aside>
 
-  <!-- Main Content -->
-  <div class="flex flex-col flex-1 overflow-hidden">
-      <header class="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-sm border-b border-slate-800 sticky top-0 z-10 h-16 flex-shrink-0">
-          <div class="flex items-center space-x-4">
-              <button @click="isSidebarOpen = !isSidebarOpen" class="p-1 text-slate-400 hover:text-white">
-                  <i data-lucide="menu" class="w-6 h-6"></i>
-              </button>
-              <a href="#" class="flex items-center space-x-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-400"><path d="M12 12.5a3.5 3.5 0 0 0 0-5 3.5 3.5 0 0 0-3.5 3.5c0 1.25.64 2.33 1.58 2.94"/><path d="M17.5 10.5c0-1.25-.64-2.33-1.58-2.94a3.5 3.5 0 0 0-1.58 8.94"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                  <h1 class="text-xl font-bold text-white">Auralis</h1>
-              </a>
-          </div>
-          <div class="flex items-center space-x-4">
-               <div x-show="isLoading" class="flex items-center space-x-2">
-                   <div class="spinner w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full"></div>
-                   <span class="text-xs text-slate-400">Loading...</span>
-               </div>
-          </div>
-      </header>
-
-      <main class="flex-1 overflow-y-auto">
-        <div class="p-4 sm:p-6 lg:p-8 space-y-8">
-            <!-- Placeholder when no street is selected -->
-            <div x-show="!selectedStreet" class="flex flex-col items-center justify-center h-full text-center text-slate-500 min-h-[60vh]">
-                <i data-lucide="mouse-pointer-2" class="w-16 h-16 mb-4"></i>
-                <h2 class="text-xl font-semibold text-slate-400">Select a Street</h2>
-                <p class="max-w-md mt-2">Choose a street from the sidebar to view its lightposts, or add a new street to get started.</p>
+    <!-- Main Content -->
+    <div class="flex flex-col flex-1 overflow-hidden">
+        <header class="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-sm border-b border-slate-800 sticky top-0 z-10 h-16 flex-shrink-0">
+            <div class="flex items-center space-x-4">
+                <button @click="isSidebarOpen = !isSidebarOpen" class="p-1 text-slate-400 hover:text-white">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <a href="#" class="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-400"><path d="M12 12.5a3.5 3.5 0 0 0 0-5 3.5 3.5 0 0 0-3.5 3.5c0 1.25.64 2.33 1.58 2.94"/><path d="M17.5 10.5c0-1.25-.64-2.33-1.58-2.94a3.5 3.5 0 0 0-1.58 8.94"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    <h1 class="text-xl font-bold text-white">Auralis</h1>
+                </a>
             </div>
-            
-            <!-- Lights Card (shown when a street is selected) -->
-            <div x-show="selectedStreet" x-cloak class="card rounded-lg overflow-hidden" x-data="{ isAdding: false }">
-                <div class="p-4 border-b border-slate-700">
-                    <div class="flex flex-wrap items-center justify-between gap-4">
-                      <h2 class="text-lg font-semibold text-slate-100 flex items-center"><i data-lucide="lightbulb" class="w-5 h-5 mr-3 text-amber-400"></i>Manage Lights for <span class="ml-2 text-amber-400" x-text="selectedStreet?.name"></span></h2>
-                        <button @click="isAdding = !isAdding" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-amber-500 text-white shadow hover:bg-amber-500/90 h-8 px-3">
-                            <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Add Light
-                        </button>
-                    </div>
+            <div class="flex items-center space-x-4">
+                <div x-show="isLoading" class="flex items-center space-x-2">
+                    <div class="spinner w-5 h-5 border-2 border-sky-400 border-t-transparent rounded-full"></div>
+                    <span class="text-xs text-slate-400">Loading...</span>
                 </div>
+            </div>
+        </header>
 
-                <!-- Add Light Form -->
-                 <div x-show="isAdding" class="p-4 border-b border-slate-700 bg-slate-900/50">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <input x-model="newLight.name" class="input text-sm rounded-md px-3 py-1.5" placeholder="Light name *">
-                        <input x-model.number="newLight.lat" class="input text-sm rounded-md px-3 py-1.5" placeholder="Latitude" type="number">
-                        <input x-model.number="newLight.lon" class="input text-sm rounded-md px-3 py-1.5" placeholder="Longitude" type="number">
-                        <input x-model="newLight.ip" class="input text-sm rounded-md px-3 py-1.5" placeholder="IP Address">
-                        <input x-model="newLight.voltage" class="input text-sm rounded-md px-3 py-1.5" placeholder="Voltage">
-                        <input x-model="newLight.current" class="input text-sm rounded-md px-3 py-1.5" placeholder="Current">
-                        <input x-model="newLight.power" class="input text-sm rounded-md px-3 py-1.5" placeholder="Power">
-                        <input x-model="newLight.energy" class="input text-sm rounded-md px-3 py-1.5" placeholder="Energy">
-                        <input x-model="newLight.location_src" class="input text-sm rounded-md px-3 py-1.5" placeholder="Location src">
-                        <input x-model="newLight.installation_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Installation date" onfocus="(this.type='date')" onblur="(this.type='text')">
-                        <input x-model="newLight.last_service_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Last service date" onfocus="(this.type='date')" onblur="(this.type='text')">
-                        <select x-model="newLight.fault_status" class="input text-sm rounded-md px-3 py-1.5 w-full">
-                            <option value="No Fault">No Fault</option>
-                            <option value="Active">Active</option>
-                            <option value="Under Investigation">Under Investigation</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
-                        <select x-model="newLight.fault_type" class="input text-sm rounded-md px-3 py-1.5 w-full">
-                            <option value="None">None</option>
-                            <option value="Control Module Failure">Control Module Failure</option>
-                            <option value="Luminaire Panel Fault">Luminaire Panel Fault</option>
-                            <option value="Network Connectivity Issue">Network Connectivity Issue</option>
-                            <option value="Power Supply Anomaly">Power Supply Anomaly</option>
-                        </select>
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-4 sm:p-6 lg:p-8 space-y-8">
+                <!-- Placeholder when no street is selected -->
+                <div x-show="!selectedStreet" class="flex flex-col items-center justify-center h-full text-center text-slate-500 min-h-[60vh]">
+                    <i data-lucide="mouse-pointer-2" class="w-16 h-16 mb-4"></i>
+                    <h2 class="text-xl font-semibold text-slate-400">Select a Street</h2>
+                    <p class="max-w-md mt-2">Choose a street from the sidebar to view its lightposts.</p>
+                </div>
+                
+                <!-- Lights Card (shown when a street is selected) -->
+                <div x-show="selectedStreet" x-cloak class="card rounded-lg overflow-hidden" x-data="{ isAdding: false }">
+                    <div class="p-4 border-b border-slate-700">
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center"><i data-lucide="lightbulb" class="w-5 h-5 mr-3 text-amber-400"></i>Manage Lights for <span class="ml-2 text-amber-400" x-text="selectedStreet?.name"></span></h2>
+                            <button @click="isAdding = !isAdding" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-amber-500 text-white shadow hover:bg-amber-500/90 h-8 px-3">
+                                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>Add Light
+                            </button>
+                        </div>
                     </div>
-                     <div class="mt-4 flex justify-end">
-                         <button @click="addLight().then(() => isAdding = false)" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-sky-500 text-white shadow hover:bg-sky-500/90 h-8 px-3">
-                             Save New Light
-                         </button>
+
+                    <!-- Add Light Form -->
+                     <div x-show="isAdding" class="p-4 border-b border-slate-700 bg-slate-900/50">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <input x-model="newLight.name" class="input text-sm rounded-md px-3 py-1.5" placeholder="Light name *">
+                            <input x-model.number="newLight.lat" class="input text-sm rounded-md px-3 py-1.5" placeholder="Latitude" type="number">
+                            <input x-model.number="newLight.lon" class="input text-sm rounded-md px-3 py-1.5" placeholder="Longitude" type="number">
+                            <input x-model="newLight.ip" class="input text-sm rounded-md px-3 py-1.5" placeholder="IP Address">
+                            <input x-model="newLight.voltage" class="input text-sm rounded-md px-3 py-1.5" placeholder="Voltage">
+                            <input x-model="newLight.current" class="input text-sm rounded-md px-3 py-1.5" placeholder="Current">
+                            <input x-model="newLight.power" class="input text-sm rounded-md px-3 py-1.5" placeholder="Power">
+                            <input x-model="newLight.energy" class="input text-sm rounded-md px-3 py-1.5" placeholder="Energy">
+                            <input x-model="newLight.location_src" class="input text-sm rounded-md px-3 py-1.5" placeholder="Location src">
+                            <input x-model="newLight.installation_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Installation date" onfocus="(this.type='date')" onblur="(this.type='text')">
+                            <input x-model="newLight.last_service_date" class="input text-sm rounded-md px-3 py-1.5" placeholder="Last service date" onfocus="(this.type='date')" onblur="(this.type='text')">
+                            <select x-model="newLight.fault_status" class="select text-sm rounded-md px-3 py-1.5">
+                                <option value="Operational">Operational</option>
+                                <option value="Fault Detected">Fault Detected</option>
+                                <option value="Under Maintenance">Under Maintenance</option>
+                            </select>
+                            <select x-model="newLight.fault_type" class="select text-sm rounded-md px-3 py-1.5" :disabled="newLight.fault_status === 'Operational'">
+                                <option value="None">None</option>
+                                <option value="Component Failure">Component Failure</option>
+                                <option value="Connectivity Issue">Connectivity Issue</option>
+                                <option value="Power Outage">Power Outage</option>
+                                <option value="Sensor Malfunction">Sensor Malfunction</option>
+                            </select>
+                        </div>
+                         <div class="mt-4 flex justify-end">
+                             <button @click="addLight().then(() => isAdding = false)" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 bg-sky-500 text-white shadow hover:bg-sky-500/90 h-8 px-3">
+                                 Save New Light
+                             </button>
+                         </div>
                      </div>
-                </div>
 
-                <div class="table-container">
-                    <table class="w-full text-sm text-left text-slate-400 table-fixed">
-                        <thead class="text-xs text-slate-300 uppercase bg-slate-800 sticky top-0">
-                            <tr>
-                                <th class="px-3 py-3 w-[4%]">ID</th><th class="px-3 py-3 w-[7%]">Name</th>
-                                <th class="px-3 py-3 w-[6%]">Lat</th><th class="px-3 py-3 w-[6%]">Lon</th><th class="px-3 py-3 w-[7%]">IP</th>
-                                <th class="px-3 py-3 w-[4%]">V</th><th class="px-3 py-3 w-[4%]">I</th><th class="px-3 py-3 w-[4%]">P</th>
-                                <th class="px-3 py-3 w-[5%]">E</th><th class="px-3 py-3 w-[10%]">Location Src</th><th class="px-3 py-3 w-[8%]">Install</th>
-                                <th class="px-3 py-3 w-[8%]">Last Serv.</th><th class="px-3 py-3 w-[7%]">Fault</th><th class="px-3 py-3 w-[7%]">Fault Type</th><th class="px-3 py-3 w-[6%] text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-700">
-                            <template x-for="light in filteredLights" :key="light.id">
-                                 <tr class="hover:bg-slate-700/50">
-                                    <td class="px-3 py-3 font-medium text-slate-300" x-text="light.id"></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.name || 'N/A'"></span><span class="tooltip-text" x-text="light.name || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lat || 'N/A'"></span><span class="tooltip-text" x-text="light.lat || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lon || 'N/A'"></span><span class="tooltip-text" x-text="light.lon || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.ip || 'N/A'"></span><span class="tooltip-text" x-text="light.ip || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.voltage || 'N/A'"></span><span class="tooltip-text" x-text="light.voltage || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.current || 'N/A'"></span><span class="tooltip-text" x-text="light.current || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.power || 'N/A'"></span><span class="tooltip-text" x-text="light.power || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.energy || 'N/A'"></span><span class="tooltip-text" x-text="light.energy || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.location_src || 'N/A'"></span><span class="tooltip-text" x-text="light.location_src || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.installation_date)"></span><span class="tooltip-text" x-text="formatDate(light.installation_date)"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.last_service_date)"></span><span class="tooltip-text" x-text="formatDate(light.last_service_date)"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_status || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_status || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_type || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_type || 'N/A'"></span></div></td>
-                                    <td class="px-3 py-3">
-                                        <div class="flex justify-end items-center gap-2">
-                                            <button @click="openEditModal(light, 'light')" class="p-1 text-slate-400 hover:text-sky-400"><i data-lucide="edit" class="w-4 h-4"></i></button>
-                                            <button @click="openDeleteModal(light, 'light')" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                        </div>
-                                    </td>
+                    <div class="table-container">
+                        <table class="w-full text-sm text-left text-slate-400 table-fixed">
+                            <thead class="text-xs text-slate-300 uppercase bg-slate-800 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-3 w-[4%]">ID</th><th class="px-3 py-3 w-[7%]">Name</th>
+                                    <th class="px-3 py-3 w-[6%]">Lat</th><th class="px-3 py-3 w-[6%]">Lon</th><th class="px-3 py-3 w-[7%]">IP</th>
+                                    <th class="px-3 py-3 w-[4%]">V</th><th class="px-3 py-3 w-[4%]">I</th><th class="px-3 py-3 w-[4%]">P</th>
+                                    <th class="px-3 py-3 w-[5%]">E</th><th class="px-3 py-3 w-[10%]">Location Src</th><th class="px-3 py-3 w-[8%]">Install</th>
+                                    <th class="px-3 py-3 w-[8%]">Last Serv.</th><th class="px-3 py-3 w-[7%]">Status</th><th class="px-3 py-3 w-[7%]">Fault Type</th><th class="px-3 py-3 w-[6%] text-right">Actions</th>
                                 </tr>
-                            </template>
-                            <template x-if="!isLoading && filteredLights.length === 0">
-                                <tr><td colspan="15" class="text-center px-3 py-4 text-slate-500">No lights found for this street.</td></tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700">
+                                <template x-for="light in filteredLights" :key="light.id">
+                                     <tr class="hover:bg-slate-700/50">
+                                         <td class="px-3 py-3 font-medium text-slate-300" x-text="light.id"></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.name || 'N/A'"></span><span class="tooltip-text" x-text="light.name || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lat || 'N/A'"></span><span class="tooltip-text" x-text="light.lat || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.lon || 'N/A'"></span><span class="tooltip-text" x-text="light.lon || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.ip || 'N/A'"></span><span class="tooltip-text" x-text="light.ip || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.voltage || 'N/A'"></span><span class="tooltip-text" x-text="light.voltage || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.current || 'N/A'"></span><span class="tooltip-text" x-text="light.current || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.power || 'N/A'"></span><span class="tooltip-text" x-text="light.power || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.energy || 'N/A'"></span><span class="tooltip-text" x-text="light.energy || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.location_src || 'N/A'"></span><span class="tooltip-text" x-text="light.location_src || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.installation_date) || 'N/A'"></span><span class="tooltip-text" x-text="formatDate(light.installation_date) || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="formatDate(light.last_service_date) || 'N/A'"></span><span class="tooltip-text" x-text="formatDate(light.last_service_date) || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_status || 'N/A'"></span><span class="tooltip-text" x-text="light.fault_status || 'N/A'"></span></div></td>
+                                         <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.fault_status === 'Operational' ? 'N/A' : (light.fault_type || 'N/A')"></span><span class="tooltip-text" x-text="light.fault_status === 'Operational' ? 'N/A' : (light.fault_type || 'N/A')"></span></div></td>
+                                         <td class="px-3 py-3">
+                                             <div class="flex justify-end items-center gap-2">
+                                                 <button @click="openEditModal(light, 'light')" class="p-1 text-slate-400 hover:text-sky-400"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                                 <button @click="openDeleteModal(light, 'light')" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                </template>
+                                <template x-if="!isLoading && filteredLights.length === 0">
+                                    <tr><td colspan="15" class="text-center px-3 py-4 text-slate-500">No lights found for this street.</td></tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Street Modal -->
+    <div x-show="isAddStreetModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="isAddStreetModalOpen" @click="isAddStreetModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="isAddStreetModalOpen" x-transition class="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+                <h3 class="text-lg font-medium leading-6 text-white">Add New Street</h3>
+                <div class="mt-4 space-y-4">
+                    <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="newStreet.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="e.g., Main Street"></div>
+                    <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="newStreet.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="Enter map URL"></div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button @click="isAddStreetModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                    <button @click="addStreet()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Street</button>
                 </div>
             </div>
         </div>
-      </main>
-  </div>
+    </div>
 
-  <!-- Add Street Modal -->
-  <div x-show="isAddStreetModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-          <div x-show="isAddStreetModalOpen" @click="isAddStreetModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
-          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-          <div x-show="isAddStreetModalOpen" x-transition class="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
-              <h3 class="text-lg font-medium leading-6 text-white">Add New Street</h3>
-              <div class="mt-4 space-y-4">
-                  <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="newStreet.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="e.g., Main Street"></div>
-                  <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="newStreet.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="Enter map URL"></div>
-              </div>
-              <div class="mt-6 flex justify-end space-x-3">
-                  <button @click="isAddStreetModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
-                  <button @click="addStreet()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Street</button>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <!-- Edit Modal -->
-  <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-          <div x-show="isEditModalOpen" @click="isEditModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
-          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-          <div x-show="isEditModalOpen" x-transition class="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
-              <h3 class="text-lg font-medium leading-6 text-white" x-text="`Edit ${editingType === 'street' ? 'Street' : 'Light'}`"></h3>
-              <div class="mt-4">
-                  <template x-if="editingType === 'street'">
-                      <div class="space-y-4">
-                          <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                          <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="editingItem.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                      </div>
-                  </template>
-                  <template x-if="editingType === 'light'">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div><label class="block text-sm font-medium text-slate-300">Light Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Latitude</label><input type="number" x-model.number="editingItem.lat" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Longitude</label><input type="number" x-model.number="editingItem.lon" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">IP Address</label><input type="text" x-model="editingItem.ip" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Voltage</label><input type="text" x-model="editingItem.voltage" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Current</label><input type="text" x-model="editingItem.current" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Power</label><input type="text" x-model="editingItem.power" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Energy</label><input type="text" x-model="editingItem.energy" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Location Src</label><input type="text" x-model="editingItem.location_src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Installation Date</label><input type="date" x-model="editingItem.installation_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-slate-300">Last Service Date</label><input type="date" x-model="editingItem.last_service_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-300">Fault Status</label>
-                                <select x-model="editingItem.fault_status" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
-                                   <option value="No Fault">No Fault</option>
-                                   <option value="Active">Active</option>
-                                   <option value="Under Investigation">Under Investigation</option>
-                                   <option value="Resolved">Resolved</option>
+    <!-- Edit Modal -->
+    <div x-show="isEditModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="isEditModalOpen" @click="isEditModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="isEditModalOpen" x-transition class="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+                <h3 class="text-lg font-medium leading-6 text-white" x-text="`Edit ${editingType === 'street' ? 'Street' : 'Light'}`"></h3>
+                <div class="mt-4">
+                    <template x-if="editingType === 'street'">
+                        <div class="space-y-4">
+                            <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="editingItem.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                        </div>
+                    </template>
+                    <template x-if="editingType === 'light'">
+                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                             <div><label class="block text-sm font-medium text-slate-300">Light Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Latitude</label><input type="number" x-model="editingItem.lat" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Longitude</label><input type="number" x-model="editingItem.lon" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">IP Address</label><input type="text" x-model="editingItem.ip" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Voltage</label><input type="text" x-model="editingItem.voltage" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Current</label><input type="text" x-model="editingItem.current" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Power</label><input type="text" x-model="editingItem.power" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Energy</label><input type="text" x-model="editingItem.energy" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Location Src</label><input type="text" x-model="editingItem.location_src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Installation Date</label><input type="date" x-model="editingItem.installation_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div><label class="block text-sm font-medium text-slate-300">Last Service Date</label><input type="date" x-model="editingItem.last_service_date" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                             <div>
+                                 <label class="block text-sm font-medium text-slate-300">Fault Status</label>
+                                 <select x-model="editingItem.fault_status" class="select mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                                    <option value="Operational">Operational</option>
+                                    <option value="Fault Detected">Fault Detected</option>
+                                    <option value="Under Maintenance">Under Maintenance</option>
+                                 </select>
+                             </div>
+                             <div>
+                                <label class="block text-sm font-medium text-slate-300">Fault Type</label>
+                                 <select x-model="editingItem.fault_type" class="select mt-1 block w-full rounded-md shadow-sm sm:text-sm" :disabled="editingItem.fault_status === 'Operational'">
+                                    <option value="None">None</option>
+                                    <option value="Component Failure">Component Failure</option>
+                                    <option value="Connectivity Issue">Connectivity Issue</option>
+                                    <option value="Power Outage">Power Outage</option>
+                                    <option value="Sensor Malfunction">Sensor Malfunction</option>
                                 </select>
                             </div>
-                            <div>
-                               <label class="block text-sm font-medium text-slate-300">Fault Type</label>
-                               <select x-model="editingItem.fault_type" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm">
-                                   <option value="None">None</option>
-                                   <option value="Control Module Failure">Control Module Failure</option>
-                                   <option value="Luminaire Panel Fault">Luminaire Panel Fault</option>
-                                   <option value="Network Connectivity Issue">Network Connectivity Issue</option>
-                                   <option value="Power Supply Anomaly">Power Supply Anomaly</option>
-                               </select>
-                            </div>
-                        </div>
-                   </template>
-              </div>
-              <div class="mt-6 flex justify-end space-x-3">
-                  <button @click="isEditModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
-                  <button @click="saveChanges()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Changes</button>
-              </div>
-          </div>
-      </div>
-  </div>
+                         </div>
+                    </template>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button @click="isEditModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                    <button @click="saveChanges()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-sky-600 border border-transparent rounded-md hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <!-- Delete Confirmation Modal -->
-  <div x-show="isDeleteModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-          <div x-show="isDeleteModalOpen" @click="isDeleteModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
-          <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-          <div x-show="isDeleteModalOpen" x-transition class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
-              <h3 class="text-lg font-medium leading-6 text-white">Confirm Deletion</h3>
-              <div class="mt-2">
-                  <p class="text-sm text-slate-400">Are you sure you want to delete <strong x-text="itemToDelete.name"></strong>? This action cannot be undone.</p>
-              </div>
-              <div class="mt-6 flex justify-end space-x-3">
-                  <button @click="isDeleteModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
-                  <button @click="confirmDelete()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-500">Delete</button>
-              </div>
-          </div>
-      </div>
-  </div>
+    <!-- Delete Confirmation Modal -->
+    <div x-show="isDeleteModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="isDeleteModalOpen" @click="isDeleteModalOpen = false" x-transition.opacity class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="isDeleteModalOpen" x-transition class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-slate-800 shadow-xl rounded-2xl">
+                <h3 class="text-lg font-medium leading-6 text-white">Confirm Deletion</h3>
+                <div class="mt-2">
+                    <p class="text-sm text-slate-400">Are you sure you want to delete <strong x-text="itemToDelete.name"></strong>? This action cannot be undone.</p>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button @click="isDeleteModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
+                    <button @click="confirmDelete()" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-500">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
-    // This is run when the DOM is ready and Alpine is initialized.
+    const fetchJSON = async (url, opts = {}) => {
+        const r = await fetch(url, { cache: 'no-store', ...opts });
+        if (!r.ok) {
+            const t = await r.text();
+            throw new Error(t || `HTTP ${r.status}`);
+        }
+        const ct = r.headers.get('content-type') || '';
+        return ct.includes('application/json') ? r.json() : r.text();
+    };
+
+    let toastTimeout;
+    const showToast = (msg, type = 'ok') => {
+        const toastEl = document.getElementById('toast');
+        const iconEl = document.getElementById('toast-icon');
+        const messageEl = document.getElementById('toast-message');
+        const icons = {
+            ok: `<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200"><svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/></svg></div>`,
+            err: `<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200"><svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20"><path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/></svg></div>`
+        };
+        iconEl.innerHTML = icons[type] || icons['ok'];
+        messageEl.textContent = msg;
+        toastEl.style.display = 'flex';
+        setTimeout(() => toastEl.classList.add('show'), 10);
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
+    };
+    
+    const formatDate = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        if (isNaN(date)) return dateString; // Return original if invalid
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    };
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('adminDashboard', () => ({
+            // State
+            streets: [],
+            lights: [],
+            isLoading: false,
+            isSidebarOpen: true,
+            selectedStreet: null,
+            socket: null,
+
+            isEditModalOpen: false,
+            isDeleteModalOpen: false,
+            isAddStreetModalOpen: false,
+
+            editingItem: {},
+            editingType: null,
+            itemToDelete: {},
+            deleteType: null,
+            newStreet: { name: '', src: '' },
+            newLight: { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None' },
+            
+            // Computed
+            get filteredLights() {
+                if (!this.selectedStreet) return [];
+                // Filter all lights by the selected street's name. The 'street_name' property is added during the initial load.
+                return this.lights.filter(light => light.street_name === this.selectedStreet.name);
+            },
+
+            // Init & Lifecycle
+            init() {
+                this.loadInitialData();
+                this.initSocketIO();
+                
+                this.$watch('newLight.fault_status', (newVal) => {
+                    if (newVal === 'Operational') this.newLight.fault_type = 'None';
+                });
+
+                this.$watch('editingItem.fault_status', (newVal) => {
+                    if (this.editingType === 'light' && newVal === 'Operational') {
+                        this.editingItem.fault_type = 'None';
+                    }
+                });
+
+                // This ensures icons are rendered after Alpine has finished its DOM updates.
+                this.$watch('filteredLights', () => this.$nextTick(() => lucide.createIcons()));
+            },
+            
+            initSocketIO() {
+                try {
+                    this.socket = io();
+                    this.socket.on('connect', () => console.log('Real-time connection established.'));
+                    
+                    this.socket.on('street_list_updated', () => {
+                        console.log("Real-time event: Street list has been updated. Reloading streets.");
+                        showToast('Street list was updated by another user.');
+                        this.loadStreets();
+                    });
+
+                    this.socket.on('street_data_update', (data) => {
+                        const streetName = this.selectedStreet ? this.selectedStreet.name : "none";
+                        console.log(`Real-time event: street_data_update received for room ${streetName}.`);
+                        this.handleRealTimeLightUpdate(data);
+                    });
+                } catch (e) { console.error("Socket.IO initialization failed:", e); }
+            },
+
+            // Methods
+            async loadInitialData() {
+                this.isLoading = true;
+                try {
+                    // Fetch all data at once for a responsive UI
+                    const [streetsData, lightsData] = await Promise.all([
+                        fetchJSON('/admin/streets'), 
+                        fetchJSON('/admin/lights')
+                    ]);
+                    this.streets = streetsData;
+                    // The lights data comes with 'street_name', so no mapping is needed.
+                    this.lights = lightsData;
+                } catch (e) {
+                    showToast(`Initial load failed: ${e.message || e}`, 'err');
+                } finally {
+                    this.isLoading = false;
+                    this.$nextTick(() => lucide.createIcons());
+                }
+            },
+            
+            async loadStreets() {
+                try {
+                    this.streets = await fetchJSON('/admin/streets');
+                } catch(e) { showToast(`Failed to refresh streets: ${e.message}`, 'err'); }
+            },
+            
+            handleRealTimeLightUpdate(updatedLights) {
+                // This is more efficient than a full reload. 
+                // It replaces only the lights for the affected street.
+                const updatedStreetName = updatedLights.length > 0 ? this.streets.find(s => s.id === updatedLights[0].street_name_id)?.name : this.selectedStreet?.name;
+                
+                // Remove all old lights for this street
+                this.lights = this.lights.filter(light => light.street_name !== this.selectedStreet.name);
+
+                // Add the new lights, ensuring they have the street_name property for filtering
+                const newLightsWithStreetName = updatedLights.map(light => ({...light, street_name: this.selectedStreet.name }));
+                this.lights.push(...newLightsWithStreetName);
+
+                showToast(`Lights for ${this.selectedStreet.name} were updated.`);
+            },
+
+            selectStreet(street) {
+                if (this.selectedStreet && this.socket) {
+                    this.socket.emit('leave_room', this.selectedStreet.name);
+                }
+                this.selectedStreet = street;
+                if (this.socket) {
+                    this.socket.emit('join_room', this.selectedStreet.name);
+                }
+            },
+
+            openEditModal(item, type) {
+                this.editingItem = JSON.parse(JSON.stringify(item));
+                // Add the 'area' property for consistency if it's a light
+                if(type === 'light') {
+                    this.editingItem.area = item.street_name;
+                }
+                this.editingType = type;
+                this.isEditModalOpen = true;
+            },
+            
+            async saveChanges() {
+                const saveFunction = this.editingType === 'street' ? this.saveStreet : this.saveLight;
+                await saveFunction(this.editingItem.id, this.editingItem);
+                this.isEditModalOpen = false;
+            },
+            
+            async saveStreet(id, data) {
+                try {
+                    await fetchJSON(`/admin/street/${id}`, {
+                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                    showToast('Street updated successfully');
+                    // Real-time update will be handled by the server broadcast
+                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
+            },
+            
+            async saveLight(id, data) {
+                try {
+                    const payload = { ...data };
+                    // Server expects 'street_name', not 'area'
+                    if (payload.area) {
+                        payload.street_name = payload.area;
+                        delete payload.area;
+                    }
+                    if (payload.lat) payload.lat = parseFloat(payload.lat);
+                    if (payload.lon) payload.lon = parseFloat(payload.lon);
+                    
+                    await fetchJSON(`/admin/light/${id}`, {
+                        method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Light updated successfully');
+                     // Real-time update will be handled by the server push
+                } catch (e) { showToast(`Update failed: ${e.message || e}`, 'err'); }
+            },
+            
+            openDeleteModal(item, type) {
+                this.itemToDelete = item;
+                this.deleteType = type;
+                this.isDeleteModalOpen = true;
+            },
+
+            async confirmDelete() {
+                const deleteFunction = this.deleteType === 'street' ? this.delStreet : this.delLight;
+                await deleteFunction(this.itemToDelete.id);
+                this.isDeleteModalOpen = false;
+            },
+
+            async delStreet(id) {
+                try {
+                    await fetchJSON(`/admin/street/${id}`, { method: 'DELETE' });
+                    showToast('Street deleted');
+                    if (this.selectedStreet && this.selectedStreet.id === id) {
+                        this.selectedStreet = null;
+                    }
+                    // Real-time update will handle UI changes
+                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
+            },
+
+            async delLight(id) {
+                try {
+                    await fetchJSON(`/admin/light/${id}`, { method: 'DELETE' });
+                    showToast('Light deleted');
+                    // Real-time update will handle UI changes
+                } catch (e) { showToast(`Delete failed: ${e.message || e}`, 'err'); }
+            },
+
+            async addStreet() {
+                if (!this.newStreet.name) return showToast('Street name is required.', 'err');
+                try {
+                    await fetchJSON('/admin/street', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(this.newStreet)
+                    });
+                    this.newStreet = { name: '', src: '' };
+                    showToast('Street added successfully');
+                    this.isAddStreetModalOpen = false;
+                    // Real-time update will handle UI changes
+                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
+            },
+
+            async addLight() {
+                if (!this.selectedStreet || !this.newLight.name) return showToast('Street and Light Name are required.', 'err');
+                try {
+                    const payload = { ...this.newLight, street_name: this.selectedStreet.name };
+                    await fetchJSON('/admin/light', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    this.newLight = { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None' };
+                    showToast('Light added successfully');
+                    // Real-time update will handle UI changes
+                } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
+            }
+        }));
+    });
+
     window.onload = () => {
         lucide.createIcons();
     };
@@ -578,3 +580,4 @@
 
 </body>
 </html>
+

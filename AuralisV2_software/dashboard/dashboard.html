@@ -2,22 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.85">
-    <title>Auralis Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuralisView</title>
     <link rel="stylesheet" href="/dashboard/dashboard_static/dashboard_style.css">
     <link rel="icon" type="image/png" href="https://luma-dashboard.netlify.app/assets/images/logo.png">
-
+    
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Auralis">
     <meta property="og:description" content="Auralis - Your smart solution for street lighting.">
     <meta property="og:image" content="https://luma-dashboard.netlify.app/assets/images/logo.png">
-    <meta property="og:url" content="https://luma-dashboard.netlify.app/">
+    <meta property="og:url" content="https://auralis-dashboard.netlify.app/">
     <meta property="og:type" content="website">
-
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- THE FIX: Include the Socket.IO client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+
 </head>
 <body id="main-window-body">
+    <!-- SVG Gradients for Gauges -->
+    <svg width="0" height="0" style="position:absolute">
+        <defs>
+            <linearGradient id="gradientRed" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f1c40f;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="gradientGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+    </svg>
 
     <div id="left-panel">
         <div id="streetNameContainer">
@@ -25,7 +42,7 @@
                 <input type="text" id="streetNameInput" placeholder="Search Street Name">
             </header>
             <div id="streetNameList" class="listContainer">
-                <!-- Street list will be populated by JS -->
+                <!-- Street list will be populated by script -->
             </div>
         </div>
 
@@ -51,89 +68,90 @@
         </div>
 
         <div id="totalEnergyConsumptionConatiner" class="gauge-card middle-panel-cards">
-             <div class="gauge-container">
+            <div class="gauge-container">
                 <svg class="gauge-svg" viewBox="0 0 100 100">
-                    <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
-                    <circle class="gauge-value-bar" id="energyConsumptionBar" cx="50" cy="50" r="45"></circle>
+                    <circle class="gauge-track" cx="50" cy="50" r="42"></circle>
+                    <circle id="consumptionValueBar" class="gauge-value-bar" cx="50" cy="50" r="42"></circle>
                 </svg>
                 <div class="gauge-text-content">
-                    <span class="gauge-value" id="totalEnergyConsumptionText">--</span>
+                    <span class="gauge-value">--</span>
                     <span class="gauge-label">Energy Consumed</span>
                 </div>
             </div>
         </div>
+        
         <div id="totalEnergySavedContainer" class="gauge-card middle-panel-cards">
             <div class="gauge-container">
                 <svg class="gauge-svg" viewBox="0 0 100 100">
-                    <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
-                    <circle class="gauge-value-bar" id="energySavedBar" cx="50" cy="50" r="45"></circle>
+                    <circle class="gauge-track" cx="50" cy="50" r="42"></circle>
+                    <circle id="savedValueBar" class="gauge-value-bar" cx="50" cy="50" r="42"></circle>
                 </svg>
                 <div class="gauge-text-content">
-                    <span class="gauge-value" id="totalEnergySavedText">--</span>
+                    <span class="gauge-value">--</span>
                     <span class="gauge-label">Energy Saved</span>
                 </div>
             </div>
         </div>
-        
+
         <div id="street-details-panel" class="middle-panel-cards">
              <h2 id="details-header">Details</h2>
-             <div id="details-content">
+            <div id="details-content">
                 <p>Select a street or light post to view details.</p>
-             </div>
+            </div>
         </div>
     </div>
 
     <div id="right-panel">
-        <!-- NEW Professional Tabbed Interface -->
         <div id="light-post-manager">
             <nav id="tabs-nav">
-                <button id="all-lights-tab" class="tab-button active">All Lights</button>
-                <button id="faulty-lights-tab" class="tab-button">Faulty</button>
+                <button class="tab-button active" data-target="all-lights-panel">All Lights</button>
+                <button class="tab-button" data-target="faulty-lights-panel">Faulty</button>
             </nav>
-
             <div id="tabs-content">
-                <!-- All Lights Panel -->
-                <div id="allLightsContainer" class="tab-panel active">
-                    <header id="lightNameSearch" class="lightNameSearch">
-                        <input type="text" id="lightNameInput" class="lightNameInput" placeholder="Search Light Post Number">
+                <div id="all-lights-panel" class="tab-panel active">
+                    <header class="lightNameSearch">
+                        <input type="text" id="lightNameInput" placeholder="Search Light Post Number">
                     </header>
                     <div id="lightNameList" class="listContainer">
-                        <!-- All lights list populated by JS -->
+                        <!-- All lights list will be populated by script -->
                     </div>
                 </div>
-
-                <!-- Faulty Lights Panel -->
-                <div id="faultyLightsContainer" class="tab-panel">
-                    <button id="faultySearchBtn" class="button">
-                        <span class="one">Search for Faults</span>
-                        <img class="two" src="/assets/images/radar.gif" alt="Searching..." width="35px" height="35px">
+                <div id="faulty-lights-panel" class="tab-panel">
+                    <!-- === UPDATED FAULT SEARCH BUTTON === -->
+                    <button id="faultySearchBtn" class="fault-scan-button">
+                        <div class="button-content-wrapper">
+                            <svg class="scan-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" class="radar-circle"></circle>
+                                <path d="M12 2v4" class="radar-line"></path>
+                                <path d="M12 18v4" class="radar-line"></path>
+                                <path d="M2 12h4" class="radar-line"></path>
+                                <path d="M18 12h4" class="radar-line"></path>
+                                <path d="M12 12L8 8" class="scanner-sweep">
+                                     <animateTransform 
+                                        attributeName="transform"
+                                        type="rotate"
+                                        from="0 12 12"
+                                        to="360 12 12"
+                                        dur="2.5s"
+                                        repeatCount="indefinite" />
+                                </path>
+                            </svg>
+                            <span class="button-text">Initiate Fault Scan</span>
+                        </div>
+                         <div class="scanner-animation"></div>
                     </button>
-                    <header id="faultyLightNameSearch" class="lightNameSearch">
-                        <input type="text" id="faultyLightNameInput" class="lightNameInput" placeholder="Search Faulty Lights">
+                    <!-- =================================== -->
+                    <header class="lightNameSearch">
+                        <input type="text" id="faultyLightNameInput" placeholder="Search Faulty Light Post Number">
                     </header>
                     <div id="faultyLightNameList" class="listContainer">
-                        <!-- Faulty lights list populated by JS -->
+                        <!-- Faulty lights list will be populated by script -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Hidden SVG Definitions for Gradients -->
-    <svg width="0" height="0" style="position:absolute">
-      <defs>
-        <linearGradient id="gradientRed" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#FF5F6D;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#FFC371;stop-opacity:1" />
-        </linearGradient>
-        <linearGradient id="gradientGreen" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#2AF598;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#009EFD;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-    </svg>
-
+    <script src="/dashboard/dashboard_static/dashboard_script.js"></script>
 </body>
-<script src="/dashboard/dashboard_static/dashboard_script.js"></script>
 </html>
 

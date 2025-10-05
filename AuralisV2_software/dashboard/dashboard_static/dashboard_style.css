@@ -36,6 +36,27 @@
     }
 }
 
+/* --- NEW KEYFRAMES FOR SCANNER --- */
+@keyframes radar-sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.1);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+}
+
+
 #main-window-body{
     font-family: 'Raleway', sans-serif;
     background-color: #121313;
@@ -380,30 +401,29 @@
     height: 100%; /* Ensure it fills its grid area */
 }
 
-/* --- REFINED DETAILS HEADER --- */
 #details-header {
-    margin: 0;
+    margin: 0 0 10px 0;
     padding-bottom: 10px;
     color: #e0e0e0;
     border-bottom: 1px solid #333;
-    flex-shrink: 0;
-    font-size: 18px; /* Prominent but not too large */
-    font-weight: 600;
+    flex-shrink: 0; /* Prevent header from shrinking */
+    font-size: 20px;
+    font-weight: bold;
 }
 
 #details-content {
     color: #a7a7a7;
     font-size: 16px;
-    flex-grow: 1; 
-    overflow-y: auto;
+    flex-grow: 1; /* Allow content to fill remaining space */
+    overflow-y: auto; /* Add scrollbar if content overflows */
+    padding-top: 10px; /* Added inner top padding */
 }
 
-/* --- NEW COMPACT & MODERN DETAILS LAYOUT --- */
+/* --- Professional Multi-Column Details Layout --- */
 .details-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Allow for more columns */
-    gap: 10px; /* Reduced gap for compact feel */
-    padding-top: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 20px; /* Reduced gaps */
 }
 
 .details-grid p {
@@ -418,10 +438,9 @@
     border-left: 3px solid #333;
     transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
-
 .details-grid p:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
 .details-grid p strong {
@@ -434,7 +453,8 @@
 }
 .details-grid .status-ok { color: #2ecc71 !important; }
 .details-grid .status-faulty { color: #e74c3c !important; }
-/* --- END MULTI-COLUMN STYLES --- */
+.details-grid .status-maintenance { color: #f39c12 !important; } /* <-- This is the fix */
+.details-grid .status-unknown { color: #6c757d !important; }
 
 
 .middle-panel-cards{
@@ -505,71 +525,162 @@
 #tabs-content {
     flex-grow: 1;
     padding-top: 20px;
-    overflow: hidden;
-    height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Ensures content stays within the bounds */
+    min-height: 0; /* THE DEFINITIVE FIX: Solves flexbox height calculation bugs */
 }
 
+/* --- ROBUST & SIMPLIFIED TAB PANEL STYLES --- */
 .tab-panel {
-    display: none; 
+    display: none; /* Hide inactive panels cleanly */
     flex-direction: column;
-    height: 100%;
     gap: 20px;
+    height: 100%; /* Ensure panel tries to fill its parent */
 }
 
 .tab-panel.active {
-    display: flex; 
+    display: flex; /* Show the active panel */
+}
+/* --- END TAB PANEL STYLES --- */
+
+
+/* --- STYLING FOR EMPTY LISTS --- */
+.no-items-message {
+    color: #a7a7a7;
+    text-align: center;
+    padding-top: 20px;
+    width: 100%;
 }
 
-.button {
+
+.lightNameSearch {
     width: 100%;
-    height: 45px;
-    border-radius: 30em;
     position: relative;
-    overflow: hidden;
-    color: #fff;
-    font-family: Roboto, sans-serif;
-    font-weight: 600;
-    font-size: 15px;
-    line-height: 45px;
-    cursor: pointer;
-    z-index: 1;
-    background: #CA4C49;
-    border: 3px solid #fff;
-    transition: all 0.5s ease-out;
+    flex-shrink: 0; /* Prevents the search bar from shrinking */
+}
+
+.listContainer {
+    width: 100%;
+    flex-grow: 1; /* This is the key fix: The list now fills all remaining space */
+    overflow-y: auto; /* The scrollbar will appear on this element if needed */
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+    padding-right: 12px;
+    font-size: 14px;
     box-sizing: border-box;
 }
 
-.button .one {
+
+.listContainer::-webkit-scrollbar {
+    width: 8px;
     transition: opacity 0.1s ease-out;
 }
 
-.button .two {
-    transition: opacity 0.3s ease-in;
-    display: none;
-    position: absolute;
-    width: 35px;
-    height: 35px;
+/* === REMOVED OLD BUTTON STYLES === */
+
+/* === NEW PREMIUM FAULT SCAN BUTTON === */
+.fault-scan-button {
+    width: 100%;
+    height: 50px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
 }
 
-.button.clicked{
-    width: 58px; 
-    height: 58px;
-    border-radius: 50%; 
+.fault-scan-button:hover:not(:disabled) {
+    background-color: #222;
+    border-color: #CA4C49;
+    color: #fff;
+}
+
+.fault-scan-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.button-content-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity 0.3s ease;
+}
+
+.scan-icon {
+    width: 24px;
+    height: 24px;
+    transition: all 0.3s ease;
+}
+
+.scan-icon .radar-circle, .scan-icon .radar-line {
+    stroke: #a7a7a7;
+    transition: stroke 0.3s ease;
+}
+.fault-scan-button:hover .scan-icon .radar-circle,
+.fault-scan-button:hover .scan-icon .radar-line {
+    stroke: #CA4C49;
+}
+
+.scan-icon .scanner-sweep {
+    stroke: none;
+    fill: #CA4C49;
+    fill-opacity: 0.4;
+    transform-origin: 12px 12px;
+    display: none; /* Hidden by default */
+}
+
+
+/* --- SCANNING STATE --- */
+.fault-scan-button.scanning {
+    border-color: #CA4C49;
     color: #CA4C49;
-    background: #FFFFFF;
-    border: 3px solid #CA4C49;
-    transition: all 0.5s ease-out;
 }
 
-.button.clicked .one{
-    opacity: 0;
+.fault-scan-button.scanning .button-text {
+    animation: fadeIn 0.5s forwards;
 }
 
-.button.clicked .two{
-    display: inline;
+.fault-scan-button.scanning .scan-icon .scanner-sweep {
+    display: block; /* Visible during scan */
 }
+
+.fault-scan-button.scanning .scan-icon .radar-circle,
+.fault-scan-button.scanning .scan-icon .radar-line {
+    stroke: #CA4C49;
+}
+
+.scanner-animation {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.fault-scan-button.scanning .scanner-animation::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background-color: #CA4C49;
+    animation: pulse 1.5s ease-out infinite;
+}
+
