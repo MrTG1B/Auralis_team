@@ -139,7 +139,6 @@
                     <!-- Add Light Form -->
                      <div x-show="isAdding" class="p-4 border-b border-slate-700 bg-slate-900/50">
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <!-- **UPDATE:** Added on_time and off_time fields -->
                             <input x-model="newLight.name" class="input text-sm rounded-md px-3 py-1.5" placeholder="Light name *">
                             <div>
                                 <label class="block text-xs font-medium text-slate-400 mb-1">On Time</label>
@@ -182,7 +181,6 @@
                     <div class="table-container">
                         <table class="w-full text-sm text-left text-slate-400 table-fixed">
                             <thead class="text-xs text-slate-300 uppercase bg-slate-800 sticky top-0">
-                                <!-- **UPDATE:** Added On/Off Time columns and adjusted widths -->
                                 <tr>
                                     <th class="px-3 py-3 w-[4%]">ID</th><th class="px-3 py-3 w-[7%]">Name</th>
                                     <th class="px-3 py-3 w-[5%]">On Time</th><th class="px-3 py-3 w-[5%]">Off Time</th>
@@ -195,7 +193,6 @@
                             <tbody class="divide-y divide-slate-700">
                                 <template x-for="light in filteredLights" :key="light.id">
                                      <tr class="hover:bg-slate-700/50">
-                                         <!-- **UPDATE:** Added cells for on_time and off_time -->
                                          <td class="px-3 py-3 font-medium text-slate-300" x-text="light.id"></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.name || 'N/A'"></span><span class="tooltip-text" x-text="light.name || 'N/A'"></span></div></td>
                                          <td class="px-3 py-3"><div class="tooltip w-full"><span class="block truncate" x-text="light.on_time || 'N/A'"></span><span class="tooltip-text" x-text="light.on_time || 'N/A'"></span></div></td>
@@ -240,6 +237,19 @@
                 <div class="mt-4 space-y-4">
                     <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="newStreet.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="e.g., Main Street"></div>
                     <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="newStreet.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm" placeholder="Enter map URL"></div>
+                    <!-- **UPDATE:** Added Power Save Mode toggle -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300">Power Save Mode</label>
+                        <div class="mt-2 flex items-center">
+                            <button type="button" @click="newStreet.power_save_mode = !newStreet.power_save_mode"
+                                    :class="newStreet.power_save_mode ? 'bg-sky-600' : 'bg-slate-600'"
+                                    class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-800">
+                                <span :class="newStreet.power_save_mode ? 'translate-x-5' : 'translate-x-0'"
+                                      class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"></span>
+                            </button>
+                            <span class="text-sm text-slate-400 ml-3" x-text="newStreet.power_save_mode ? 'Enabled' : 'Disabled'"></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button @click="isAddStreetModalOpen = false" type="button" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 border border-transparent rounded-md hover:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500">Cancel</button>
@@ -261,10 +271,22 @@
                         <div class="space-y-4">
                             <div><label class="block text-sm font-medium text-slate-300">Street Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
                             <div><label class="block text-sm font-medium text-slate-300">Map Src</label><input type="text" x-model="editingItem.src" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <!-- **UPDATE:** Added Power Save Mode toggle -->
+                             <div>
+                                <label class="block text-sm font-medium text-slate-300">Power Save Mode</label>
+                                <div class="mt-2 flex items-center">
+                                    <button type="button" @click="editingItem.power_save_mode = !editingItem.power_save_mode"
+                                            :class="editingItem.power_save_mode ? 'bg-sky-600' : 'bg-slate-600'"
+                                            class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-800">
+                                        <span :class="editingItem.power_save_mode ? 'translate-x-5' : 'translate-x-0'"
+                                              class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"></span>
+                                    </button>
+                                     <span class="text-sm text-slate-400 ml-3" x-text="editingItem.power_save_mode ? 'Enabled' : 'Disabled'"></span>
+                                </div>
+                            </div>
                         </div>
                     </template>
                     <template x-if="editingType === 'light'">
-                         <!-- **UPDATE:** Added on_time and off_time fields to Edit modal -->
                          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                              <div><label class="block text-sm font-medium text-slate-300">Light Name</label><input type="text" x-model="editingItem.name" class="input mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
                              <div>
@@ -288,21 +310,21 @@
                              <div>
                                  <label class="block text-sm font-medium text-slate-300">Fault Status</label>
                                  <select x-model="editingItem.fault_status" class="select mt-1 block w-full rounded-md shadow-sm sm:text-sm">
-                                    <option value="Operational">Operational</option>
-                                    <option value="Fault Detected">Fault Detected</option>
-                                    <option value="Under Maintenance">Under Maintenance</option>
+                                     <option value="Operational">Operational</option>
+                                     <option value="Fault Detected">Fault Detected</option>
+                                     <option value="Under Maintenance">Under Maintenance</option>
                                  </select>
                              </div>
                              <div>
                                 <label class="block text-sm font-medium text-slate-300">Fault Type</label>
                                  <select x-model="editingItem.fault_type" class="select mt-1 block w-full rounded-md shadow-sm sm:text-sm" :disabled="editingItem.fault_status === 'Operational'">
-                                    <option value="None">None</option>
-                                    <option value="Component Failure">Component Failure</option>
-                                    <option value="Connectivity Issue">Connectivity Issue</option>
-                                    <option value="Power Outage">Power Outage</option>
-                                    <option value="Sensor Malfunction">Sensor Malfunction</option>
-                                </select>
-                            </div>
+                                     <option value="None">None</option>
+                                     <option value="Component Failure">Component Failure</option>
+                                     <option value="Connectivity Issue">Connectivity Issue</option>
+                                     <option value="Power Outage">Power Outage</option>
+                                     <option value="Sensor Malfunction">Sensor Malfunction</option>
+                                 </select>
+                             </div>
                          </div>
                     </template>
                 </div>
@@ -388,8 +410,8 @@
             editingType: null,
             itemToDelete: {},
             deleteType: null,
-            newStreet: { name: '', src: '' },
-            // **UPDATE:** Added on_time and off_time to the default newLight object.
+            // **UPDATE:** Added power_save_mode to the newStreet object
+            newStreet: { name: '', src: '', power_save_mode: false },
             newLight: { name: '', lat: null, lon: null, ip: '', voltage: '', current: '', power: '', energy: '', location_src: '', installation_date: '', last_service_date: '', fault_status: 'Operational', fault_type: 'None', on_time: '', off_time: '' },
             
             // Computed
@@ -559,7 +581,8 @@
                         method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(this.newStreet)
                     });
-                    this.newStreet = { name: '', src: '' };
+                    // **UPDATE:** Reset the new power_save_mode field
+                    this.newStreet = { name: '', src: '', power_save_mode: false };
                     showToast('Street added successfully');
                     this.isAddStreetModalOpen = false;
                 } catch (e) { showToast(`Add failed: ${e.message || e}`, 'err'); }
@@ -587,4 +610,3 @@
 
 </body>
 </html>
-

@@ -172,10 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
     async function createStreetListButtons() {
         try {
             const response = await fetch(`${window.location.origin}/streetnames`);
+            console.log(response);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
             const data = await response.text();
+            console.log('Received street list:', data);
             allStreets = data.split('\n').filter(Boolean); 
+
             updateList('streetNameList', allStreets, 'streetradio', 'streetname', 0);
              if (allStreets.length > 0) {
                 const firstStreetRadio = document.querySelector('input[name="streetradio"]');
@@ -215,6 +218,24 @@ document.addEventListener("DOMContentLoaded", () => {
     function handleLightSelection(lightName) {
         const lightData = allStreetLights.find(lp => lp.name === lightName);
         if (lightData) {
+            const allLightRadios = document.querySelectorAll('input[name="lightradio"]');
+            allLightRadios.forEach(radio => {
+                if (radio.nextElementSibling && radio.nextElementSibling.textContent.trim() === lightName) {
+                    radio.checked = true;
+                } else {
+                    radio.checked = false; // Explicitly deselect non-matching lights
+                }
+            });
+
+            const faultyLightRadios = document.querySelectorAll('input[name="faultylightradio"]');
+            faultyLightRadios.forEach(radio => {
+                if (radio.nextElementSibling && radio.nextElementSibling.textContent.trim() === lightName) {
+                    radio.checked = true;
+                } else {
+                    radio.checked = false; // Explicitly deselect non-matching lights
+                }
+            });
+
             showLightPostDetails(lightData);
             
             const { totalConsumed, totalSaved } = calculateEnergyMetrics([lightData]);
@@ -377,13 +398,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function getStatusInfo(status) {
         switch (status) {
             case 'Operational':
-                return { color: '#2ecc71', className: 'ok', label: 'Operational' };
+                return { color: '#2ecc71', className: 'ok', label: 'Operational',icon:'/assets/images/icon_operational.png' };
             case 'Fault Detected':
-                return { color: '#e74c3c', className: 'faulty', label: 'Fault Detected' };
+                return { color: '#e74c3c', className: 'faulty', label: 'Fault Detected', icon: '/assets/images/icon_faulty.png'};
             case 'Under Maintenance':
-                return { color: '#f39c12', className: 'maintenance', label: 'Under Maintenance' };
+                return { color: '#f39c12', className: 'maintenance', label: 'Under Maintenance', icon: '/assets/images/icon_under_maintenance.png' };
             default:
-                return { color: '#6c757d', className: 'unknown', label: status || 'Unknown' };
+                return { color: '#6c757d', className: 'unknown', label: status || 'Unknown', icon: '/assets/images/icon_unknown.png' };
         }
     }
     
@@ -523,7 +544,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.head.appendChild(style);
     }
 
-
     // --- Map & Gauge Updates ---
     
     // NEW: Central function for calculating all energy metrics
@@ -549,18 +569,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (offTimeDecimal <= onTimeDecimal) {
                     offTimeDecimal += 24;
                 }
-                console.log(onTimeDecimal);
-                console.log(offTimeDecimal);
                 const durationHours = offTimeDecimal - onTimeDecimal;
-                // console.log(durationHours);
 
                 if (durationHours > 0) {
                     const maxPossibleWh = power * durationHours;
-                    // console.log(maxPossibleKWh);
                     const maxPossibleKWh = maxPossibleWh / 1000;
-                    // console.log(maxPossibleKWh);
                     const savedKWh = maxPossibleKWh - consumed;
-                    console.log(savedKWh);
                     totalSaved += Math.max(0, savedKWh);
                 }
             }
@@ -589,25 +603,41 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         currentMap = L.map('map').setView([lightsWithCoords[0].lat, lightsWithCoords[0].lon], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(currentMap);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(currentMap);
+
         
         mapMarkers.forEach(marker => marker.remove());
         mapMarkers = [];
 
         lightsWithCoords.forEach(light => {
             const statusInfo = getStatusInfo(light.fault_status);
-            const marker = L.circleMarker([light.lat, light.lon], {
-                radius: 8,
-                fillColor: statusInfo.color,
-                color: '#fff',
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.9
-            }).addTo(currentMap);
 
-            marker.bindPopup(`<b>${light.name}</b><br>${streetName}`);
+            const markerIcon = L.icon({
+                iconUrl: statusInfo.icon,
+                iconSize: [32,32],
+                iconAnchor: [16,32],
+                popupAnchor: [0,-28],
+                className: `light-icon-${light.fault_status}`
+            });
+
+            const marker = L.marker([light.lat, light.lon], { icon: markerIcon }).addTo(currentMap);
+
+            // const marker = L.circleMarker([light.lat, light.lon], {
+            //     radius: 8,
+            //     fillColor: statusInfo.color,
+            //     color: '#fff',
+            //     weight: 2,
+            //     opacity: 1,
+            //     fillOpacity: 0.9
+            // }).addTo(currentMap);
+
+            if (light.fault_type !== "None"){
+                marker.bindPopup(`<b>${light.name}</b><br>${streetName}<br><b>Fault Type:</b>${light.fault_type}`);
+            }
+            else{
+                marker.bindPopup(`<b>${light.name}</b><br>${streetName}`);
+            }
+            
             marker.on('click', () => handleLightSelection(light.name));
             
             marker.lightName = light.name;

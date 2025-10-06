@@ -138,9 +138,11 @@ def init_db_schema():
         cur.close(); conn.close()
         conn = get_db_connection()
         cur = conn.cursor()
+        # **UPDATE:** Added power_save_mode to the street_names table schema.
         cur.execute("""
             CREATE TABLE IF NOT EXISTS street_names (
-                id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, src TEXT NULL
+                id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, src TEXT NULL,
+                power_save_mode BOOLEAN NOT NULL DEFAULT FALSE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS light_posts (
@@ -165,6 +167,22 @@ def dms_to_decimal(dms: str) -> float:
     if direction in ['S','W']: decimal = -decimal
     return decimal
 
+@app.errorhandler(404)
+def resource_not_found(e):
+    """
+    Handles 404 Not Found errors by returning a consistent JSON response.
+    """
+    error_response = {
+        "status": 404,
+        "error": "Not Found",
+        "message": "The requested resource or API endpoint was not found on the server."
+    }
+    # Return the JSON response with the correct 404 status code
+    # return jsonify(error_response), 404
+    return send_file('404.html')    
+
+# --- Your Existing API Endpoints ---
+
 @app.route("/")
 def home():
     return "<h1>Auralis Real-Time Server is Running</h1>"
@@ -180,19 +198,80 @@ def proxy_street_names_list():
         cur = conn.cursor()
         cur.execute("SELECT name FROM street_names ORDER BY name ASC")
         streets = [row[0] for row in cur.fetchall()]
+        print(f"Street names: {streets}")
         cur.close()
         conn.close()
-        return ("\n".join(streets), 200, {"Content-Type": "text/plain; charset=utf-8"})
+        return ("\n".join(streets), 200, {"Content-Type": "text/plain; charset=utf8"})
     except Exception as e:
         print(f"Error in /streetnames: {e}")
         return ("Server error while fetching street names.", 500)
+
+@app.route("/streets/all_details")
+def get_all_street_details():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        # Select all columns and all rows from the table
+        cur.execute("SELECT * FROM street_names ORDER BY name ASC")
+        # Fetch all results into a list
+        streets = cur.fetchall()
+        cur.close()
+        conn.close()
+        # Return the list of all streets
+        return jsonify(streets)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/admin/street/<string:street_name>/power_save_mode", methods=["PATCH"])
+def update_power_save_mode(street_name):
+    """
+    Updates the power_save_mode for a specific street.
+    Expects a JSON body like: {"state": true}
+    """
+    payload = request.get_json(silent=True)
+
+    # Validate that the request body contains a boolean 'state' field
+    if not payload or 'state' not in payload or not isinstance(payload.get('state'), bool):
+        return jsonify({"error": "Request body must be JSON with a boolean 'state' field."}), 400
+
+    new_state = payload['state']
+    print(f"[API] Received request to update power_save_mode for '{street_name}' to {new_state}")
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Execute the update query
+        cur.execute(
+            "UPDATE street_names SET power_save_mode = %s WHERE name = %s",
+            (new_state, street_name)
+        )
+
+        # Check if any row was actually updated
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            return jsonify({"error": f"Street '{street_name}' not found."}), 404
+
+        cur.close()
+        conn.close()
+
+        # If the update was successful, notify all clients via Socket.IO
+        broadcast_street_list_update()
+        print(f"[API] Updated power_save_mode for '{street_name}' to {new_state}. Notifying clients.")
+
+        return jsonify({"status": "ok", "message": f"Power save mode for {street_name} updated to {new_state}."})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin/streets", methods=["GET"]) 
 def list_streets():
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT id, name, src FROM street_names ORDER BY name ASC")
+        # **UPDATE:** Fetched the new power_save_mode column.
+        cur.execute("SELECT id, name, src, power_save_mode FROM street_names ORDER BY name ASC")
         rows = cur.fetchall()
         cur.close(); conn.close()
         return jsonify(rows)
@@ -267,7 +346,10 @@ def create_street():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("INSERT INTO street_names (name, src) VALUES (%s, %s) ON DUPLICATE KEY UPDATE src=VALUES(src)", (name, payload.get("src")))
+        # **UPDATE:** Added power_save_mode to the INSERT statement.
+        power_save_mode = payload.get("power_save_mode", False)
+        cur.execute("INSERT INTO street_names (name, src, power_save_mode) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE src=VALUES(src), power_save_mode=VALUES(power_save_mode)", 
+                    (name, payload.get("src"), power_save_mode))
         cur.close(); conn.close()
         broadcast_street_list_update()
         return jsonify({"status": "ok"})
@@ -290,7 +372,8 @@ def delete_street(street_id):
 def patch_street(street_id):
     payload = request.get_json(silent=True) or {}
     updates, vals = [], []
-    for key in ["name", "src"]:
+    # **UPDATE:** Added 'power_save_mode' to the list of updatable fields.
+    for key in ["name", "src", "power_save_mode"]:
         if key in payload:
             updates.append(f"{key}=%s"); vals.append(payload[key])
     if not updates: return jsonify({"error": "No fields to update"}), 400
@@ -417,4 +500,3 @@ def stop_server():
 
 if __name__ == '__main__':
     run_server()
-

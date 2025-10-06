@@ -560,89 +560,90 @@
     transition: opacity 0.1s ease-out;
 }
 
-/* --- CORRECTED & FINAL PREMIUM FAULT SCAN BUTTON --- */
-@keyframes radar-scan {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+/* --- FINAL & CENTERED PREMIUM FAULT SCAN BUTTON --- */
+@keyframes radar-sweep-animation {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-@keyframes pulse-target {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.8; }
+@keyframes pulse-text-animation {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
+/* The Button: Acts as a container to center its content */
 #faulty-lights-panel .fault-scan-button {
     width: 100%;
-    background-color: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    color: #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    /* This is the key change for the stacked layout */
-    flex-direction: column; 
-    align-items: center;
-    justify-content: center;
-    gap: 15px; /* Increased gap for spacing */
+    background: #1c1c1c;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 20px 15px;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.3s ease;
     outline: none;
-    position: relative; 
-    overflow: hidden;
-}
-
-#faulty-lights-panel .fault-scan-button:hover:not(:disabled) {
-    background-color: #252525;
-    border-color: #444;
-}
-
-#faulty-lights-panel .fault-scan-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.scan-icon-container {
-    /* Increased size for a more prominent icon */
-    width: 60px; 
-    height: 60px;
-    position: relative;
+    box-shadow: 0 2px 8px rgba(230, 3, 3, 0.4);
+    
+    /* Centering Fix: This centers the .button-content-wrapper */
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.scan-icon-container .icon-target,
-.scan-icon-container .icon-scanner {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    transform-origin: center;
+/* The Content Wrapper: Stacks and aligns the icon and text */
+#faulty-lights-panel .button-content-wrapper {
+    display: flex;
+    flex-direction: row; /* Stacks icon on top of text */
+    align-items: center;   /* Centers them horizontally */
+    align-content: center;
+    justify-content: center;
+    gap: 12px;             /* Space between icon and text */
 }
 
-.scan-icon-container .icon-target {
-    stroke: #a7a7a7;
-    transition: all 0.3s ease;
+/* Styles for Icon and Text within the wrapper */
+#faulty-lights-panel .button-content-wrapper .scan-icon {
+    width: 50px;
+    height: 50px;
+}
+#faulty-lights-panel .button-content-wrapper .button-text {
+    color: #a7a7a7;
+    font-size: 16px;
+    font-weight: 600;
+    transition: color 0.3s ease;
 }
 
-.fault-scan-button:hover:not(:disabled) .icon-target {
-    stroke: #fff;
+
+/* Hover/Active States on the Button */
+#faulty-lights-panel .fault-scan-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: #222;
+    border-color: #444;
+    box-shadow: #e74c3c;
+}
+#faulty-lights-panel .fault-scan-button:hover:not(:disabled) .button-text {
+    color: #fff;
 }
 
-.scan-icon-container .icon-scanner {
+
+/* The animated part of the SVG */
+#faulty-lights-panel .fault-scan-button .scanner-sweep {
+    transform-origin: center; /* Ensures rotation is from the middle */
+    opacity: 0;               /* Hidden by default */
+    transition: opacity 0.3s ease;
     stroke: #CA4C49;
-    opacity: 0; /* Hidden by default */
-    animation: radar-scan 1.5s linear infinite;
+    fill: rgba(202, 76, 73, 0.2);
 }
 
-/* When the button has the 'scanning' class, activate animations */
-.fault-scan-button.scanning .icon-scanner {
-    opacity: 1;
+/* --- SCANNING STATE (Activated by JS adding the '.scanning' class) --- */
+#faulty-lights-panel .fault-scan-button.scanning {
+    pointer-events: none; /* Disable clicks while scanning */
 }
 
-.fault-scan-button.scanning .icon-target {
-    animation: pulse-target 1.5s ease-in-out infinite;
-    stroke: #e74c3c; /* Change target color during scan */
+#faulty-lights-panel .fault-scan-button.scanning .scanner-sweep {
+    opacity: 1; /* Makes the sweep visible */
+    animation: radar-sweep-animation 2.5s linear infinite; /* Starts the animation */
 }
 
+#faulty-lights-panel .fault-scan-button.scanning .button-text {
+    color: #CA4C49; /* Change text color to match the scan */
+    animation: pulse-text-animation 1.5s ease-in-out infinite;
+}

@@ -1,0 +1,248 @@
+/* Main styling for the button */
+.power-save-btn {
+    position: relative; /* Establishes a positioning context for children */
+    width: 100%;
+    height: 50px;
+    background-color: #1a1a1a; /* Dark background for when the loader is at 0% */
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 0 20px;
+    cursor: pointer;
+    overflow: hidden; /* Ensures the SVG corners are clipped */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-family: 'Raleway', sans-serif; /* Ensures font consistency */
+}
+
+/* Hover and focus states for a premium feel */
+.power-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+    border-color: #007bff;
+}
+
+/* The SVG loader is positioned absolutely to fill the background */
+.power-save-bg-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Places it behind the text content */
+}
+
+/* The rectangle inside the SVG needs a transition for smooth animation */
+#power-saving-bar {
+    transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* The container for the text, positioned above the background loader */
+.power-save-content {
+    position: relative;
+    z-index: 2; /* Ensures text is on top */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* Styling for the label text */
+.power-save-label {
+    font-size: 15px;
+    color: #f0f0f0;
+    font-weight: 500;
+    /* Adds a subtle shadow to ensure text is readable against the bright gradient */
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Styling for the percentage value */
+.power-save-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* Main window overlay: fixed position, dark transparent background */
+.power-control-window {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+
+    /* Hidden by default */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+/* The class that makes the window visible */
+.power-control-window.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* The actual content modal container */
+#powerControlContainer {
+    width: 60%;
+    max-width: 800px;
+    height: 70%;
+    background-color: #121313;
+    border: 1px solid #333;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    /* Animation: starts slightly lower, scaled down, and faded out */
+    transform: translateY(20px) scale(0.98);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+/* When the window is open, the container animates into place */
+.power-control-window.is-open #powerControlContainer {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* --- 3. Window Header and Close Button --- */
+
+#powerControlHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+}
+
+#powerControlHeader h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    color: #f0f0f0;
+}
+
+.close-btn {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    color: #a7a7a7;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.close-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.close-btn:hover {
+    background-color: #CA4C49;
+    color: #fff;
+    border-color: #CA4C49;
+    transform: rotate(90deg);
+}
+
+
+/* --- 4. Window Content (Street List & Toggles) --- */
+
+#powerControlContent {
+    flex-grow: 1;
+    padding: 0; /* Remove padding to allow the list to go edge-to-edge */
+    overflow-y: hidden;
+}
+
+/* Scrollable list container */
+.street-power-list {
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px 25px; /* Add padding inside the scrollable area */
+}
+
+/* Individual street item row */
+.street-power-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid #2a2a2a; /* Lighter separator */
+}
+
+.street-power-item:last-child {
+    border-bottom: none;
+}
+
+.street-item-name {
+    font-size: 16px;
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+
+/* --- 5. Professional Toggle Switch Styling --- */
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+/* Hide the default HTML checkbox */
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider is the background of the toggle */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333; /* Off state color */
+    border-radius: 28px;
+    transition: background-color 0.3s ease;
+}
+
+/* The sliding knob */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* When the hidden checkbox is checked... */
+.toggle-switch input:checked + .slider {
+    background-color: #2ecc71; /* Green 'on' state color from your theme */
+}
+
+/* ...move the knob to the right */
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(22px);
+}

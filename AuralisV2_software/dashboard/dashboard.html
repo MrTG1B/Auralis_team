@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AuralisView</title>
     <link rel="stylesheet" href="/dashboard/dashboard_static/dashboard_style.css">
+    <link rel="stylesheet" href="/dashboard/dashboard_static/powerSaving_styles.css">
     <link rel="icon" type="image/png" href="https://luma-dashboard.netlify.app/assets/images/logo.png">
     
     <!-- Open Graph Meta Tags -->
@@ -36,6 +37,8 @@
         </defs>
     </svg>
 
+    
+
     <div id="left-panel">
         <div id="streetNameContainer">
             <header id="streetNameSearch">
@@ -57,6 +60,24 @@
     <div id="middle-panel">
         <header id="main-header">
             <h1 id="header-title">AuralisView</h1>
+            <div id="powerSaveButtonContainer">
+                <button class="power-save-btn" id="openPowerSaveModalBtn" type="button">
+                    <svg class="power-save-bg-loader" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="powerSavingGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#e74c3c;" />
+                                <stop offset="50%" style="stop-color:#f39c12;" />
+                                <stop offset="100%" style="stop-color:#2ecc71;" />
+                            </linearGradient>
+                        </defs>
+                        <rect id="power-saving-bar" x="0" y="0" width="0%" height="100%" fill="url(#powerSavingGradient)" />
+                    </svg>
+                    <div class="power-save-content">
+                        <span class="power-save-label">Power Saving Active</span>
+                        <span class="power-save-value" id="power-save-percentage">0%</span>
+                    </div>
+                </button>
+            </div>
             <div id="header-datetime">
                 <p id="timeText">--:--:--</p>
                 <p id="dateText">---,--- --</p>
@@ -120,22 +141,11 @@
                     <!-- === UPDATED FAULT SEARCH BUTTON === -->
                     <button id="faultySearchBtn" class="fault-scan-button">
                         <div class="button-content-wrapper">
-                            <svg class="scan-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10" class="radar-circle"></circle>
-                                <path d="M12 2v4" class="radar-line"></path>
-                                <path d="M12 18v4" class="radar-line"></path>
-                                <path d="M2 12h4" class="radar-line"></path>
-                                <path d="M18 12h4" class="radar-line"></path>
-                                <path d="M12 12L8 8" class="scanner-sweep">
-                                     <animateTransform 
-                                        attributeName="transform"
-                                        type="rotate"
-                                        from="0 12 12"
-                                        to="360 12 12"
-                                        dur="2.5s"
-                                        repeatCount="indefinite" />
-                                </path>
-                            </svg>
+                            <!-- <img src="/assets/images/fault_scan.svg" class="scan-icon" alt="Fault Scan Icon"> -->
+                             <object type="image/svg+xml" data="/assets/images/old_svg.svg" class="scan-icon">
+                                <!-- Fallback text -->
+                                Fault Scan Icon
+                            </object>
                             <span class="button-text">Initiate Fault Scan</span>
                         </div>
                          <div class="scanner-animation"></div>
@@ -151,7 +161,33 @@
             </div>
         </div>
     </div>
+
+    <!-- The main window container, which also acts as the dark overlay -->
+    <div id="powerControlWindow" class="power-control-window">
+        
+        <!-- The content container that will slide in -->
+        <div id="powerControlContainer">
+            <header id="powerControlHeader">
+                <h1>Street Power Saving</h1>
+                <button id="closePowerControlBtn" class="close-btn" aria-label="Close Window">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </header>
+
+            <div id="powerControlContent">
+                <!-- This container will hold the list of streets -->
+                <div id="street-power-list" class="street-power-list">                   
+                    <!-- Add more street items here dynamically -->
+
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="/dashboard/dashboard_static/dashboard_script.js"></script>
+    <script src="/dashboard/dashboard_static/power_saving_script.js"></script>
 </body>
 </html>
 
